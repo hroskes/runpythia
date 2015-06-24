@@ -19,8 +19,10 @@ eval $(scram ru -sh) &&
 mkdir -p Configuration/GenProduction/python/ThirteenTeV/ &&
 if ! [ -f Configuration/GenProduction/python/ThirteenTeV/Hadronizer_TuneCUETP8M1_13TeV_generic_LHE_pythia8_Tauola_cff.py ]; then
     cp ../../script/Hadronizer_TuneCUETP8M1_13TeV_generic_LHE_pythia8_Tauola_cff.py Configuration/GenProduction/python/ThirteenTeV/Hadronizer_TuneCUETP8M1_13TeV_generic_LHE_pythia8_Tauola_cff.py
-    #scram b
 fi &&
+cd Configuration &&
+scram b &&
+cd .. &&
 
 cd $CWD &&
 ln -fs $(readlink -f "$1") "$(cd -)/" &&
@@ -42,7 +44,15 @@ cmsRun $GENcfg &&
 cmsDriver.py Configuration/GenProduction/python/ThirteenTeV/Hadronizer_TuneCUETP8M1_13TeV_generic_LHE_pythia8_Tauola_cff.py --filein file:$GENfile --fileout file:$GENSIMfile --mc --eventcontent RAWSIM --customise SLHCUpgradeSimulations/Configuration/postLS1Customs.customisePostLS1,Configuration/DataProcessing/Utils.addMonitoring --datatier GEN-SIM --conditions MCRUN2_71_V1::All --step GEN,SIM --magField 38T_PostLS1 --python_filename $GENSIMcfg --no_exec -n $3 &&
 if [ $2 -ne $3 ]; then
     ../../script/converttotemplate.sh $GENSIMcfg &&
-    cp ../../script/template.sh . &&
+    mkdir -p $jobdir &&
+    ln -fs ../$GENfile $jobdir/ &&
+    echo "
+        #!/bin/bash
+        cd $dir/CMSSW_7_1_14/src/OUTDIR
+        #cd /afs/cern.ch/work/d/dsperka/Run2MC/CMSSW_7_1_14/src/OUTDIR/
+        eval "'`scram runtime -sh`'"
+        cmsRun CFGFILE
+    " > template.sh &&
     python ../../script/submitJobs.py $GENSIMcfgtemplate $jobdir $2 $3
 else
     cmsRun $GENSIMcfg
