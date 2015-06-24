@@ -6,14 +6,15 @@ try:
     nevents = int(sys.argv[3])
     eventsperjob = int(sys.argv[4])
     njobs = (nevents + eventsperjob - 1) / eventsperjob
+    queue = sys.argv[5]
 except IndexError:
     print "Not enough arguments!"
     print "Usage:"
-    print "    python submitJobs.py mytemplate_cfg.py outdir nevents eventsperjob"
+    print "    python submitJobs.py mytemplate_cfg.py outdir nevents eventsperjob queue"
     sys.exit(1)
 
 resubmit = False
-testing = True
+testing = False
 
 csh_template = 'template.sh'
 
@@ -87,13 +88,12 @@ for job in range(1,njobs+1):
 
     #if (job>1): continue
 
-    if cfg_job in processCmd("bjobs -w -q 8nh"):
+    if cfg_job in processCmd("bjobs -w -q " + queue):
         continue
 
     #output = processCmd('bsub -q 1nh -J '+cfg_job+' '+csh_job)
     print 'submitting job',str(job)
-    #cmd = 'bsub -q 1nh -J '+cfg_job+' '+csh_job
-    cmd = 'bsub -q 8nh -J '+cfg_job+' '+csh_job
+    cmd = 'bsub -q ' + queue + ' -J '+cfg_job+' '+csh_job
     output = processCmd(cmd)
     while ('error' in output):
         time.sleep(1.0);

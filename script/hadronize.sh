@@ -2,6 +2,7 @@
 dir=/afs/cern.ch/user/h/hroskes/work/public/forMeng/ttH/
 hepdir=/scratch0/hep/hroskes/pythiatest/     #comment out to store on lxplus, in CMSSW_7_1_14/src/(filename without .lhe)/
 hepusername=hroskes
+queue=8nh
 
 if ! [ $3 ]; then
     echo "    ./hadronize.sh file.lhe events events_per_job"
@@ -65,7 +66,7 @@ if [ $2 -ne $3 ]; then
             rsync -az ${GENSIMfile/.root/_JOBNUMBER.root} $dir/CMSSW_7_1_14/src/$jobdir
         fi
     " > template.sh &&
-    python ../../script/submitJobs.py $GENSIMcfgtemplate $jobdir $2 $3
+    python ../../script/submitJobs.py $GENSIMcfgtemplate $jobdir $2 $3 $queue
 else
     cmsRun $GENSIMcfg
 fi
