@@ -13,7 +13,7 @@ except IndexError:
     sys.exit(1)
 
 resubmit = False
-testing = False
+testing = True
 
 csh_template = 'template.sh'
 
@@ -83,6 +83,7 @@ for job in range(1,njobs+1):
     output = processCmd('cp ../'+csh_template+' '+csh_job)
     output = processCmd("sed -i 's~OUTDIR~"+outdir+"~g' "+csh_job)
     output = processCmd("sed -i 's~CFGFILE~"+cfg_job+"~g' "+csh_job)
+    output = processCmd("sed -i 's~JOBNUMBER~"+str(job)+"~g' "+csh_job)
 
     #if (job>1): continue
 

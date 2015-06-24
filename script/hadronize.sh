@@ -1,9 +1,12 @@
+#! /bin/bash
+dir=/afs/cern.ch/user/h/hroskes/work/public/forMeng/ttH/
+hepdir=/scratch0/hep/hroskes/pythiatest/     #comment out to store on lxplus, in CMSSW_7_1_14/src/(filename without .lhe)/
+hepusername=hroskes
+
 if ! [ $3 ]; then
     echo "    ./hadronize.sh file.lhe events events_per_job"
     exit 1
 fi &&
-
-dir=/afs/cern.ch/user/h/hroskes/work/public/forMeng/ttH &&
 
 ls $1 > /dev/null &&
 
@@ -44,14 +47,23 @@ cmsRun $GENcfg &&
 cmsDriver.py Configuration/GenProduction/python/ThirteenTeV/Hadronizer_TuneCUETP8M1_13TeV_generic_LHE_pythia8_Tauola_cff.py --filein file:$GENfile --fileout file:$GENSIMfile --mc --eventcontent RAWSIM --customise SLHCUpgradeSimulations/Configuration/postLS1Customs.customisePostLS1,Configuration/DataProcessing/Utils.addMonitoring --datatier GEN-SIM --conditions MCRUN2_71_V1::All --step GEN,SIM --magField 38T_PostLS1 --python_filename $GENSIMcfg --no_exec -n $3 &&
 if [ $2 -ne $3 ]; then
     ../../script/converttotemplate.sh $GENSIMcfg &&
-    mkdir -p $jobdir &&
-    ln -fs ../$GENfile $jobdir/ &&
-    echo "
+    echo '
         #!/bin/bash
-        cd $dir/CMSSW_7_1_14/src/OUTDIR
-        #cd /afs/cern.ch/work/d/dsperka/Run2MC/CMSSW_7_1_14/src/OUTDIR/
-        eval "'`scram runtime -sh`'"
+        tmpdir=$(mktemp -d)
+        cd $tmpdir
+        scram p CMSSW CMSSW_7_1_14
+        cd CMSSW_7_1_14/src
+        eval $(scram ru -sh)
+        mkdir '"$jobdir
+        cd $jobdir
+        ln -fs $dir/CMSSW_7_1_14/src/$GENfile .
+        ln -fs $dir/CMSSW_7_1_14/src/$jobdir/CFGFILE .
         cmsRun CFGFILE
+        if [ $hepdir ]; then
+            rsync -az ${GENSIMfile/.root/_JOBNUMBER.root} $hepusername""@hep.pha.jhu.edu:$hepdir
+        else
+            rsync -az ${GENSIMfile/.root/_JOBNUMBER.root} $dir/CMSSW_7_1_14/src/$jobdir
+        fi
     " > template.sh &&
     python ../../script/submitJobs.py $GENSIMcfgtemplate $jobdir $2 $3
 else
