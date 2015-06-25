@@ -66,6 +66,7 @@ if [ $2 -ne $3 ]; then
             rsync -az ${GENSIMfile/.root/_JOBNUMBER.root} $dir/CMSSW_7_1_14/src/$jobdir
         fi
     " > template.sh &&
+    chmod u+x template.sh &&
     python ../../script/submitJobs.py $GENSIMcfgtemplate $jobdir $2 $3 $queue
 else
     cmsRun $GENSIMcfg
