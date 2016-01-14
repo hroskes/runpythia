@@ -20,6 +20,7 @@
 
 // system include files
 #include <memory>
+#include <vector>
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -41,7 +42,7 @@
 #include "TLorentzVector.h"
 #include "TClonesArray.h"
 
-#include "computeAngles.cc"
+#include "computeAngles.h"
 
 //
 // class declaration
@@ -314,8 +315,8 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             L22P4.SetPxPyPzE(Z22->Px(), Z22->Py(), Z22->Pz(), Z22->E());
             
             // prepare vectors of TLorentzVector(s) 
-            vector<TLorentzVector> partP;
-            vector<int> partId;
+            std::vector<TLorentzVector> partP;
+            std::vector<int> partId;
             partP.push_back(L11P4); partP.push_back(L12P4); partP.push_back(L21P4); partP.push_back(L22P4);
             partId.push_back(id_lep[L1]); partId.push_back(id_lep[L2]); partId.push_back(id_lep[L3]); partId.push_back(id_lep[L4]);
 
