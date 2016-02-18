@@ -23,6 +23,8 @@
 #include <vector>
 
 // user include files
+#include "FWCore/Framework/interface/ConsumesCollector.h"
+
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/EDAnalyzer.h"
 
@@ -59,11 +61,16 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       static bool sortJetsByPt( const reco::GenJet &p1, const reco::GenJet &p2 ){ return (p1.pt() > p2.pt()); };
 
    private:
+
       virtual void beginJob() override;
       virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
       virtual void endJob() override;
 
       void bookPassedEventTree(TString treeName, TTree *tree);
+
+      edm::ConsumesCollector iC;
+      edm::EDGetTokenT<reco::GenParticleCollection> particleCollectionToken_;
+      edm::EDGetTokenT<reco::GenJetCollection> jetCollectionToken_;
 
       TH1F* h_nleptons;
 
@@ -105,7 +112,7 @@ class PlotHiggsMass : public edm::EDAnalyzer {
 //
 // constructors and destructor
 //
-PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig)
+PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) : iC(consumesCollector())
 
 {
     edm::Service<TFileService> fs;
@@ -114,6 +121,9 @@ PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig)
     GenEventsTree = new TTree("GenEvents","GenEvents");
     
     //now do what ever initialization is needed
+
+    particleCollectionToken_ = iC.consumes<reco::GenParticleCollection> (edm::InputTag("genParticles"));
+    jetCollectionToken_ = iC.consumes<reco::GenJetCollection> (edm::InputTag("ak5GenJets"));
 
 }
 
@@ -145,10 +155,10 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     //std::cout<<"Run: "<<Run<<" Event: "<<Event<<" Lumi: "<<LumiSect<<std::endl;
     // GEN collection
     edm::Handle<reco::GenParticleCollection> genParticles;
-    iEvent.getByLabel("genParticles", genParticles);
+    iEvent.getByToken(particleCollectionToken_, genParticles);
    
     edm::Handle<reco::GenJetCollection> genJets;
-    iEvent.getByLabel("ak5GenJets", genJets);
+    iEvent.getByToken(jetCollectionToken_, genJets);
 
     std::vector<reco::GenParticle> leptons;
     std::vector<reco::GenParticle> leptonsS1;
