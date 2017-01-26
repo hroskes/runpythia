@@ -1,2 +1,3 @@
-CMSSW_7_1_14
+CMSSW_*
 *.lhe
+*.root

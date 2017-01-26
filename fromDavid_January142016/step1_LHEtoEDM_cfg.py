@@ -4,6 +4,17 @@
 # Source: /local/reps/CMSSW/CMSSW/Configuration/Applications/python/ConfigBuilder.py,v 
 # with command line options: step1 --filein /store/user/dsperka/Run2MC/TunePowheg/submission_LHE_ggH_JHU_125_Apr22_hfact0p5/cmsgrid_final_1.lhe --fileout file:ggH_125_hfact0p5_LHE.root --mc --eventcontent LHE --datatier GEN --conditions MCRUN2_71_V1::All --step NONE --python_filename ggH_125_hfact0p5_LHEtoEDM_cfg.py --no_exec --customise Configuration/DataProcessing/Utils.addMonitoring -n -1
 import FWCore.ParameterSet.Config as cms
+import sys
+import os
+
+print sys.argv
+
+if not sys.argv[2].endswith(".root") or os.path.exists(sys.argv[2]):
+    raise ValueError("First argument {} should end with .root and not exist".format(sys.argv[2]))
+
+for filename in sys.argv[3:]:
+    if not filename.endswith(".lhe") or not os.path.exists(filename):
+        raise ValueError("Second argument and further {} should end with .lhe and exist".format(filename))
 
 process = cms.Process('LHE')
 
@@ -16,13 +27,13 @@ process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.MessageLogger.cerr.FwkReport.reportEvery = 5000
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(25000)
+    input = cms.untracked.int32(-1)
 )
 
 # Input source
 process.source = cms.Source("LHESource",
     fileNames = cms.untracked.vstring(
-        'file:/afs/cern.ch/work/d/dsperka/Run2MC/4B/CMSSW_7_1_20_patch2/src/runLHE_ggH_125/cmsgrid_final.lhe'
+        *('file:'+_ for _ in sys.argv[3:])
     )
 )   
 
@@ -43,7 +54,7 @@ process.LHEoutput = cms.OutputModule("PoolOutputModule",
     splitLevel = cms.untracked.int32(0),
     eventAutoFlushCompressedSize = cms.untracked.int32(5242880),
     outputCommands = process.LHEEventContent.outputCommands,
-    fileName = cms.untracked.string('file:ggH_125_LHE.root'),
+    fileName = cms.untracked.string('file:{}'.format(sys.argv[2])),
     dataset = cms.untracked.PSet(
         filterName = cms.untracked.string(''),
         dataTier = cms.untracked.string('GEN')
@@ -54,7 +65,7 @@ process.LHEoutput = cms.OutputModule("PoolOutputModule",
 
 # Other statements
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, 'MCRUN2_71_V1::All', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, 'MCRUN2_71_V1', '')
 
 # Path and EndPath definitions
 process.LHEoutput_step = cms.EndPath(process.LHEoutput)
