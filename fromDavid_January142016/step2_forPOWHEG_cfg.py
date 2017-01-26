@@ -3,6 +3,8 @@
 # Revision: 1.19 
 # Source: /local/reps/CMSSW/CMSSW/Configuration/Applications/python/ConfigBuilder.py,v 
 # with command line options: Configuration/GenProduction/python/HIG-RunIIWinter15GS-00123-fragment.py --filein file:WH_125_LHE.root --fileout file:HIG-RunIIWinter15GS-00123.root --mc --eventcontent RAWSIM --customise SLHCUpgradeSimulations/Configuration/postLS1Customs.customisePostLS1,Configuration/DataProcessing/Utils.addMonitoring --datatier GEN --inputCommands keep *,drop LHEXMLStringProduct_*_*_* --conditions MCRUN2_71_V1::All --beamspot NominalCollision2015 --step GEN --magField 38T_PostLS1 --python_filename HIG-RunIIWinter15GS-00123_1_cfg.py --no_exec -n 53
+
+assert False, "check forJHUGen to see how to modify"
 import FWCore.ParameterSet.Config as cms
 
 process = cms.Process('GEN')
