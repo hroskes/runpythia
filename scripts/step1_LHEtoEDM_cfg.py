@@ -7,14 +7,17 @@ import FWCore.ParameterSet.Config as cms
 import sys
 import os
 
-print sys.argv
+try:
+    if not sys.argv[2].endswith(".root") or os.path.exists(sys.argv[2]):
+        raise ValueError("First argument {} should end with .root and not exist".format(sys.argv[2]))
 
-if not sys.argv[2].endswith(".root") or os.path.exists(sys.argv[2]):
-    raise ValueError("First argument {} should end with .root and not exist".format(sys.argv[2]))
-
-for filename in sys.argv[3:]:
-    if not filename.endswith(".lhe") or not os.path.exists(filename):
-        raise ValueError("Second argument and further {} should end with .lhe and exist".format(filename))
+    for filename in sys.argv[3:]:
+        if not filename.endswith(".lhe") or not os.path.exists(filename):
+            raise ValueError("Second argument and further {} should end with .lhe and exist".format(filename))
+except:
+    print sys.argv
+    print "cmsRun", sys.argv[1], "outputfile.root inputfile1.lhe inputfile2.lhe ..."
+    raise
 
 process = cms.Process('LHE')
 
