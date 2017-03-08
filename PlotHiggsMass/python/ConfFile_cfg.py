@@ -26,7 +26,7 @@ process.maxEvents = cms.untracked.PSet(
 )
 
 process.TFileService = cms.Service("TFileService", 
-    fileName = cms.string(outfile),
+    fileName = cms.string("file:"+outfile),
     closeFileFast = cms.untracked.bool(True)
 )
 
@@ -44,7 +44,7 @@ process.schedule = cms.Schedule(
 
 myfilelist = cms.untracked.vstring()
 myfilelist.extend( [
-        infile,
+        "file:"+infile,
 ])
 
 process.source = cms.Source("PoolSource",
