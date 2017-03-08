@@ -1,3 +1,5 @@
+#!/usr/bin/env cmsRun
+
 import FWCore.ParameterSet.Config as cms
 import sys
 
