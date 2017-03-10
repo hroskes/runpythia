@@ -86,32 +86,21 @@ class PlotHiggsMass : public edm::EDAnalyzer {
 
       std::vector<int> id_lep; std::vector<int> status_lep; std::vector<int> motherid_lep;
 
+      std::vector<double> AssociatedParticlePt, AssociatedParticleEta, AssociatedParticlePhi, AssociatedParticleMass;
+      std::vector<int> AssociatedParticleId;
+
       float cosTheta1, cosTheta2, cosThetaStar, Phi, Phi1;
       double massZ1, massZ2, mass4l;
       int finalState;
       int passedFiducial;
 
+      float LepPt[4], LepEta[4], LepPhi[4], LepMass[4], LepId[4];
+//      float GenLepPt[4], GenLepEta[4], GenLepPhi[4], GenLepMass[4], GenLepId[4];
+
       double MaxDijetM, Dijet01M;
 
-      //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
-      //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
-      //virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-      //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-
-      // ----------member data ---------------------------
 };
 
-//
-// constants, enums and typedefs
-//
-
-//
-// static data member definitions
-//
-
-//
-// constructors and destructor
-//
 PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) : iC(consumesCollector())
 
 {
@@ -130,10 +119,6 @@ PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) : iC(consumesColl
 
 PlotHiggsMass::~PlotHiggsMass()
 {
- 
-   // do anything here that needs to be done at desctruction time
-   // (e.g. close files, deallocate resources etc.)
-
 }
 
 
@@ -168,8 +153,10 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     nleptons=0;
     njets=0;
     pT_H = -1.0; mH=1.0;
+
     p4_lep->Clear(); p4_lepS1->Clear(); p4_jet->Clear(); p4_4l->Clear(); p4_4lS1->Clear(); p4_Z->Clear(); p4_ZZ->Clear();
     id_lep.clear(); status_lep.clear(); motherid_lep.clear();
+    AssociatedParticlePt.clear(); AssociatedParticleEta.clear(); AssociatedParticlePhi.clear(); AssociatedParticleMass.clear(); AssociatedParticleId.clear()
 
     massZ1=-1.0; massZ2=-1.0; mass4l=-1.0; 
     cosTheta1=9999.0; cosTheta2=9999.0; cosThetaStar=9999.0; Phi=9999.0; Phi1=9999.0;
@@ -185,7 +172,6 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         if (genPart->pdgId()==25) {
             pT_H = genPart->pt();
             mH = genPart->mass();
-            //std::cout<<"H status: "<<genPart->status()<<" pt: "<<genPart->pt()<<std::endl;
         }
         if (genPart->pdgId()==23) {
             Zs.push_back(*genPart);
@@ -194,22 +180,24 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         if( abs(genPart->pdgId())==15 || abs(genPart->pdgId()) == 13 || abs(genPart->pdgId()) == 11 ) {
 
             if( genPart->mother()->pdgId()==23 or abs(genPart->mother()->pdgId())==24 ) {
-                //std::cout<<"leptons from W or Z:"<<std::endl;
-                //std::cout<<"lepton id: "<<genPart->pdgId()<<" pt: "<<genPart->pt()<<" eta: "<<genPart->eta()<<" status: "<<genPart->status()<<" mother: "<<genPart->mother()->pdgId()<<std::endl;
-                leptons.push_back(*genPart);
-                nleptons++;
-            }        
+                bool passcut = true;
+                if (abs(genPart->pdgId())==11 && (genPart->pt()<=electronpTcut || abs(genPart->eta()) <= electronetacut)) passcut = false;
+                if (abs(genPart->pdgId())==13 && (genPart->pt()<=    muonpTcut || abs(genPart->eta()) <=     muonetacut)) passcut = false;
+                if (abs(genPart->pdgId())==15) passcut = false;
+                assert(genPart->status()==1);
+                if (passcut) {
+                    leptons.push_back(*genPart);
+                    nleptons++;
+                }
+            }
 
-            //if( genPart->status()==1 && (genPart->mother()->pdgId()==23 or abs(genPart->mother()->pdgId())==24 or genPart->mother()->pdgId()==genPart->pdgId())) {
             if(genPart->status()==1) {
-                //std::cout<<"status 1 leptons:"<<std::endl;
-                //std::cout<<"lepton id: "<<genPart->pdgId()<<" pt: "<<genPart->pt()<<" eta: "<<genPart->eta()<<" status: "<<genPart->status()<<" mother: "<<genPart->mother()->pdgId()<<std::endl;
                 leptonsS1.push_back(*genPart);
-                
-            }        
-
+            }
         }
     }
+
+    isSelected = (nleptons>=4);
 
     std::sort(Zs.begin(), Zs.end(), sortByM);
     for (unsigned int i=0; i<Zs.size(); ++i) {
@@ -224,7 +212,6 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     std::sort(leptons.begin(), leptons.end(), sortByPt);
     for (unsigned int i=0; i<leptons.size(); ++i) {
-        //std::cout<<"lepton id: "<<leptons[i].pdgId()<<" pt: "<<leptons[i].pt()<<" eta: "<<leptons[i].eta()<<" status: "<<leptons[i].status()<<" mother: "<<leptons[i].mother()->pdgId()<<std::endl;
         new ( (*p4_lep)[i] ) TLorentzVector(leptons[i].px(),leptons[i].py(),leptons[i].pz(),leptons[i].energy());
         id_lep.push_back(leptons[i].pdgId());
         status_lep.push_back(leptons[i].status());       
@@ -299,12 +286,25 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             } 
         } 
 
-        if (abs(id_lep[L1])==11 && abs(id_lep[L3])==11) finalState=1; // 4e
-        else if (abs(id_lep[L1])==13 && abs(id_lep[L3])==13) finalState=2; // 4mu
-        else if (abs(id_lep[L1])==15 && abs(id_lep[L3])==15) finalState=3; // 4tau 
-        else if ( (abs(id_lep[L1])+abs(id_lep[L3]))==24 ) finalState=4; // 2e2mu
-        else if ( (abs(id_lep[L1])+abs(id_lep[L3]))==26 ) finalState=5; // 2e2tau
-        else if ( (abs(id_lep[L1])+abs(id_lep[L3]))==28 ) finalState=6; // 2mu2tau
+        LepPt[0] = p4_lep->At(L1).Pt()
+        LepEta[0] = p4_lep->At(L1).Eta()
+        LepPhi[0] = p4_lep->At(L1).Phi()
+        LepMass[0] = p4_lep->At(L1).M()
+
+        LepPt[1] = p4_lep->At(L2).Pt()
+        LepEta[1] = p4_lep->At(L2).Eta()
+        LepPhi[1] = p4_lep->At(L2).Phi()
+        LepMass[1] = p4_lep->At(L2).M()
+
+        LepPt[2] = p4_lep->At(L3).Pt()
+        LepEta[2] = p4_lep->At(L3).Eta()
+        LepPhi[2] = p4_lep->At(L3).Phi()
+        LepMass[2] = p4_lep->At(L3).M()
+
+        LepPt[3] = p4_lep->At(L4).Pt()
+        LepEta[3] = p4_lep->At(L4).Eta()
+        LepPhi[3] = p4_lep->At(L4).Phi()
+        LepMass[3] = p4_lep->At(L4).M()
 
         if (passZ1 && passZ2) {
 
@@ -329,12 +329,10 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             std::vector<int> partId;
             partP.push_back(L11P4); partP.push_back(L12P4); partP.push_back(L21P4); partP.push_back(L22P4);
             partId.push_back(id_lep[L1]); partId.push_back(id_lep[L2]); partId.push_back(id_lep[L3]); partId.push_back(id_lep[L4]);
-
-            mela::computeAngles(partP[0],partId[0],partP[1],partId[1],partP[2],partId[2],partP[3],partId[3],cosThetaStar,cosTheta1,cosTheta2,Phi,Phi1);
             
         }
     }
-        
+
     std::sort(leptonsS1.begin(), leptonsS1.end(), sortByPt);
     for (unsigned int i=0; i<leptonsS1.size(); ++i) {
         //std::cout<<"lepton id: "<<leptons[i].pdgId()<<" pt: "<<leptons[i].pt()<<" eta: "<<leptons[i].eta()<<" status: "<<leptons[i].status()<<" mother: "<<leptons[i].mother()->pdgId()<<std::endl;
@@ -351,7 +349,6 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         TLorentzVector p4_4lepS1 = (*LS1_1)+(*LS1_2)+(*LS1_3)+(*LS1_4);
         new ( (*p4_4lS1)[0] ) TLorentzVector(p4_4lepS1.Px(), p4_4lepS1.Py(), p4_4lepS1.Pz(), p4_4lepS1.E());
-        //std::cout<< "p4_4l[0].Pt()" << p4_4l[0].Pt() << std::endl;
     }
      
     reco::GenJetCollection::const_iterator  genJet;
@@ -364,7 +361,6 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         if (min_dR>0.5 && genJet->pt()>30.0) { 
             njets++;            
             jets.push_back(*genJet);
-            //std::cout<<"gen jet: "<<genJet->pdgId()<<" pt: "<<genJet->pt()<<" eta: "<<genJet->eta()<<std::endl;
         }
     }
     std::sort(jets.begin(), jets.end(), sortJetsByPt);
@@ -373,11 +369,16 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
 
     for (unsigned int i=0; i<jets.size(); ++i) {
+        AssociatedParticlePt.push_back(jets[i].pt());
+        AssociatedParticleEta.push_back(jets[i].eta());
+        AssociatedParticlePhi.push_back(jets[i].phi());
+        AssociatedParticleMass.push_back(jets[i].mass());
+        AssociatedParticleId.push_back(jets[i].id());
         for (unsigned int j=0; j<jets.size(); ++j) {
             if (i==j) continue;
-            TLorentzVector *jet1 = new TLorentzVector(jets[i].px(),jets[i].py(),jets[i].pz(),jets[i].energy());
-            TLorentzVector *jet2 = new TLorentzVector(jets[j].px(),jets[j].py(),jets[j].pz(),jets[j].energy());
-            TLorentzVector dijet = (*jet1)+(*jet2);
+            const TLorentzVector jet1(jets[i].px(), jets[i].py(), jets[i].pz(), jets[i].energy());
+            const TLorentzVector jet2(jets[j].px(), jets[j].py(), jets[j].pz(), jets[j].energy());
+            TLorentzVector dijet = jet1+jet2;
             if (dijet.M()>MaxDijetM) MaxDijetM=dijet.M();
             if (i==0 and j==1) Dijet01M=dijet.M();
         }
@@ -406,6 +407,8 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
     tree->Branch("Run",&Run,"Run/l");
     tree->Branch("Event",&Event,"Event/l");
     tree->Branch("LumiSect",&LumiSect,"LumiSect/l");
+
+    tree->Branch("isSelected", &isSelected, "isSelected/I");
 
     tree->Branch("nleptons",&nleptons,"nleptons/I");
     tree->Branch("njets",&njets,"njets/I");
@@ -450,6 +453,54 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
     tree->Branch("MaxDijetM",&MaxDijetM,"MaxDijetM/D");
     tree->Branch("Dijet01M",&Dijet01M,"Dijet01M/D");
 
+    tree->Branch("Lep1Pt", LepPt[0], "Lep1Pt/F");
+    tree->Branch("Lep1Eta", LepEta[0], "Lep1Eta/F");
+    tree->Branch("Lep1Phi", LepPhi[0], "Lep1Phi/F");
+    tree->Branch("Lep1Mass", LepMass[0], "Lep1Mass/F");
+    tree->Branch("Lep1Id", LepId[0], "Lep1Id/F");
+
+    tree->Branch("Lep2Pt", LepPt[1], "Lep2Pt/F");
+    tree->Branch("Lep2Eta", LepEta[1], "Lep2Eta/F");
+    tree->Branch("Lep2Phi", LepPhi[1], "Lep2Phi/F");
+    tree->Branch("Lep2Mass", LepMass[1], "Lep2Mass/F");
+    tree->Branch("Lep2Id", LepId[1], "Lep2Id/F");
+
+    tree->Branch("Lep3Pt", LepPt[2], "Lep3Pt/F");
+    tree->Branch("Lep3Eta", LepEta[2], "Lep3Eta/F");
+    tree->Branch("Lep3Phi", LepPhi[2], "Lep3Phi/F");
+    tree->Branch("Lep3Mass", LepMass[2], "Lep3Mass/F");
+    tree->Branch("Lep3Id", LepId[2], "Lep3Id/F");
+
+    tree->Branch("Lep4Pt", LepPt[3], "Lep4Pt/F");
+    tree->Branch("Lep4Eta", LepEta[3], "Lep4Eta/F");
+    tree->Branch("Lep4Phi", LepPhi[3], "Lep4Phi/F");
+    tree->Branch("Lep4Mass", LepMass[3], "Lep4Mass/F");
+    tree->Branch("Lep4Id", LepId[3], "Lep4Id/F");
+/*
+    tree->Branch("GenLep1Pt", GenLepPt[0], "GenLep1Pt/F");
+    tree->Branch("GenLep1Eta", GenLepEta[0], "GenLep1Eta/F");
+    tree->Branch("GenLep1Phi", GenLepPhi[0], "GenLep1Phi/F");
+    tree->Branch("GenLep1Mass", GenLepMass[0], "GenLep1Mass/F");
+    tree->Branch("GenLep1Id", GenLepId[0], "GenLep1Id/F");
+
+    tree->Branch("GenLep2Pt", GenLepPt[1], "GenLep2Pt/F");
+    tree->Branch("GenLep2Eta", GenLepEta[1], "GenLep2Eta/F");
+    tree->Branch("GenLep2Phi", GenLepPhi[1], "GenLep2Phi/F");
+    tree->Branch("GenLep2Mass", GenLepMass[1], "GenLep2Mass/F");
+    tree->Branch("GenLep2Id", GenLepId[1], "GenLep2Id/F");
+
+    tree->Branch("GenLep3Pt", GenLepPt[2], "GenLep3Pt/F");
+    tree->Branch("GenLep3Eta", GenLepEta[2], "GenLep3Eta/F");
+    tree->Branch("GenLep3Phi", GenLepPhi[2], "GenLep3Phi/F");
+    tree->Branch("GenLep3Mass", GenLepMass[2], "GenLep3Mass/F");
+    tree->Branch("GenLep3Id", GenLepId[2], "GenLep3Id/F");
+
+    tree->Branch("GenLep4Pt", GenLepPt[3], "GenLep4Pt/F");
+    tree->Branch("GenLep4Eta", GenLepEta[3], "GenLep4Eta/F");
+    tree->Branch("GenLep4Phi", GenLepPhi[3], "GenLep4Phi/F");
+    tree->Branch("GenLep4Mass", GenLepMass[3], "GenLep4Mass/F");
+    tree->Branch("GenLep4Id", GenLepId[3], "GenLep4Id/F");
+*/
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
