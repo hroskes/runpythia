@@ -21,6 +21,8 @@
 // system include files
 #include <memory>
 #include <vector>
+#include <iostream>
+using namespace std;
 
 // user include files
 #include "FWCore/Framework/interface/ConsumesCollector.h"
@@ -86,7 +88,10 @@ class PlotHiggsMass : public edm::EDAnalyzer {
 
       std::vector<int> id_lep; std::vector<int> status_lep; std::vector<int> motherid_lep;
 
-      std::vector<double> *AssociatedParticlePt, *AssociatedParticleEta, *AssociatedParticlePhi, *AssociatedParticleMass;
+      std::vector<double> *AssociatedParticlePt;
+      std::vector<double> *AssociatedParticleEta;
+      std::vector<double> *AssociatedParticlePhi;
+      std::vector<double> *AssociatedParticleMass;
       std::vector<int> *AssociatedParticleId;
 
       float cosTheta1, cosTheta2, cosThetaStar, Phi, Phi1;
@@ -121,6 +126,12 @@ PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) : iC(consumesColl
     particleCollectionToken_ = iC.consumes<reco::GenParticleCollection> (edm::InputTag("genParticles"));
     jetCollectionToken_ = iC.consumes<reco::GenJetCollection> (edm::InputTag("ak5GenJets"));
 
+    AssociatedParticlePt = new std::vector<double>;
+    AssociatedParticleEta = new std::vector<double>;
+    AssociatedParticlePhi = new std::vector<double>;
+    AssociatedParticleMass = new std::vector<double>;
+    AssociatedParticleId = new std::vector<int>;
+
 }
 
 
@@ -137,14 +148,12 @@ PlotHiggsMass::~PlotHiggsMass()
 void
 PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-
     using namespace edm;
 
     Run = iEvent.id().run();
     Event = iEvent.id().event();
     LumiSect = iEvent.id().luminosityBlock();
 
-    //std::cout<<"Run: "<<Run<<" Event: "<<Event<<" Lumi: "<<LumiSect<<std::endl;
     // GEN collection
     edm::Handle<reco::GenParticleCollection> genParticles;
     iEvent.getByToken(particleCollectionToken_, genParticles);
@@ -183,28 +192,43 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         if (genPart->pdgId()==23) {
             Zs.push_back(*genPart);
         }
+        std::vector<reco::GenParticle> genleptons;
 
         if( abs(genPart->pdgId())==15 || abs(genPart->pdgId()) == 13 || abs(genPart->pdgId()) == 11 ) {
 
-            if( genPart->mother()->pdgId()==23 or abs(genPart->mother()->pdgId())==24 ) {
-                bool passcut = true;
-                if (abs(genPart->pdgId())==11 && (genPart->pt()<=electronpTcut || abs(genPart->eta()) <= electronetacut)) passcut = false;
-                if (abs(genPart->pdgId())==13 && (genPart->pt()<=    muonpTcut || abs(genPart->eta()) <=     muonetacut)) passcut = false;
-                if (abs(genPart->pdgId())==15) passcut = false;
-                assert(genPart->status()==1);
-                if (passcut) {
-                    leptons.push_back(*genPart);
-                    nleptons++;
-                }
+            bool passcut = true;
+            if (abs(genPart->pdgId())==11 && (genPart->pt()<electronpTcut || abs(genPart->eta()) > electronetacut)) passcut = false;
+            if (abs(genPart->pdgId())==13 && (genPart->pt()<    muonpTcut || abs(genPart->eta()) >     muonetacut)) passcut = false;
+            if (abs(genPart->pdgId())==15) passcut = false;
+
+            if( genPart->mother()->pdgId()==23 || abs(genPart->mother()->pdgId())==24 ) {
+                edm::LogInfo("Leptons") << "gen  " << passcut << " " << genPart->pdgId() << " " << genPart->pt() << " " << genPart->eta();
+                genleptons.push_back(*genPart);
             }
 
             if(genPart->status()==1) {
-                leptonsS1.push_back(*genPart);
+                edm::LogInfo("Leptons") << "reco " << passcut << " " << genPart->pdgId() << " " << genPart->pt() << " " << genPart->eta() << endl;
+                if (passcut) {
+                    nleptons++;
+                    leptons.push_back(*genPart);
+                    leptonsS1.push_back(*genPart);
+                }
             }
         }
     }
 
-    isSelected = (nleptons>=4);
+    cout << endl;
+
+    int ep=0, em=0, mup=0, mum=0, taup=0, taum=0;
+    for (auto l : leptons) {
+      if (l.pdgId() == +11) ep++;
+      if (l.pdgId() == -11) em++;
+      if (l.pdgId() == +13) mup++;
+      if (l.pdgId() == -13) mum++;
+      if (l.pdgId() == +15) taup++;
+      if (l.pdgId() == -15) taum++;
+    }
+    isSelected = (min(ep, em) + min(mup, mum) + min(taup, taum) >= 2);
 
     std::sort(Zs.begin(), Zs.end(), sortByM);
     for (unsigned int i=0; i<Zs.size(); ++i) {
@@ -226,7 +250,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
 
     unsigned int Nlep = p4_lep->GetLast()+1;
-    if (Nlep>=4) {
+    if (isSelected) {
 
         TLorentzVector *L_1 = (TLorentzVector*) p4_lep->At(0);
         TLorentzVector *L_2 = (TLorentzVector*) p4_lep->At(1);
@@ -235,7 +259,6 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         TLorentzVector p4_4lep = (*L_1)+(*L_2)+(*L_3)+(*L_4);
         new ( (*p4_4l)[0] ) TLorentzVector(p4_4lep.Px(), p4_4lep.Py(), p4_4lep.Pz(), p4_4lep.E());
-        //std::cout<< "p4_4l[0].Pt()" << p4_4l[0].Pt() << std::endl;
         mass4l=p4_4lep.M();
 
         double offshell=99999.0;
@@ -347,7 +370,6 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     std::sort(leptonsS1.begin(), leptonsS1.end(), sortByPt);
     for (unsigned int i=0; i<leptonsS1.size(); ++i) {
-        //std::cout<<"lepton id: "<<leptons[i].pdgId()<<" pt: "<<leptons[i].pt()<<" eta: "<<leptons[i].eta()<<" status: "<<leptons[i].status()<<" mother: "<<leptons[i].mother()->pdgId()<<std::endl;
         new ( (*p4_lepS1)[i] ) TLorentzVector(leptonsS1[i].px(),leptonsS1[i].py(),leptonsS1[i].pz(),leptonsS1[i].energy());
     }
 
