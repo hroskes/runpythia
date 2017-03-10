@@ -1,6 +1,7 @@
 #!/usr/bin/env cmsRun
 
 import FWCore.ParameterSet.Config as cms
+import os
 import sys
 
 argv = sys.argv[2:]
