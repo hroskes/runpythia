@@ -5,13 +5,19 @@ import sys
 
 argv = sys.argv[2:]
 try:
-    infile = argv[0]
-    firstevent = int(argv[1])
-    lastevent = int(argv[2])
-    outfile = argv[3]
+    outfile = sys.argv[2]
+    if not outfile.endswith(".root") or os.path.exists(outfile):
+        raise ValueError("First argument {} should end with .root and not exist".format(sys.argv[2]))
+
+    infiles = sys.argv[3:]
+    if not infiles:
+        raise ValueError("No input files!")
+    for filename in infiles:
+        if not filename.endswith(".root") or not os.path.exists(filename):
+            raise ValueError("Second argument and further {} should end with .root and exist".format(filename))
 except:
     print sys.argv
-    print "cmsRun", sys.argv[1], "infile firstevent lastevent outfile"
+    print "cmsRun", sys.argv[1], "outputfile.root inputfile1.root inputfile2.root ..."
     raise
 
 process = cms.Process("Demo")
@@ -22,7 +28,7 @@ process.load("RecoJets.Configuration.GenJetParticles_cff")
 process.load("RecoJets.JetProducers.ak5GenJets_cfi")
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(lastevent - firstevent + 1)
+    input = cms.untracked.int32(-1)
 )
 
 process.TFileService = cms.Service("TFileService", 
@@ -44,7 +50,7 @@ process.schedule = cms.Schedule(
 
 myfilelist = cms.untracked.vstring()
 myfilelist.extend( [
-        "file:"+infile,
+        "file:"+infile for infile in infiles
 ])
 
 process.source = cms.Source("PoolSource",
