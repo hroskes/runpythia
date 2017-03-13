@@ -99,8 +99,10 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       int finalState;
       int passedFiducial;
 
-      float LepPt[4], LepEta[4], LepPhi[4], LepMass[4], LepId[4];
-//      float GenLepPt[4], GenLepEta[4], GenLepPhi[4], GenLepMass[4], GenLepId[4];
+      float LepPt[4], LepEta[4], LepPhi[4], LepMass[4];
+      int LepId[4];
+//      float GenLepPt[4], GenLepEta[4], GenLepPhi[4], GenLepMass[4];
+//      int GenLepId[4];
 
       double MaxDijetM, Dijet01M;
 
@@ -497,49 +499,49 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
     tree->Branch("Lep1Eta", &LepEta[0], "Lep1Eta/F");
     tree->Branch("Lep1Phi", &LepPhi[0], "Lep1Phi/F");
     tree->Branch("Lep1Mass", &LepMass[0], "Lep1Mass/F");
-    tree->Branch("Lep1Id", &LepId[0], "Lep1Id/F");
+    tree->Branch("Lep1Id", &LepId[0], "Lep1Id/I");
 
     tree->Branch("Lep2Pt", &LepPt[1], "Lep2Pt/F");
     tree->Branch("Lep2Eta", &LepEta[1], "Lep2Eta/F");
     tree->Branch("Lep2Phi", &LepPhi[1], "Lep2Phi/F");
     tree->Branch("Lep2Mass", &LepMass[1], "Lep2Mass/F");
-    tree->Branch("Lep2Id", &LepId[1], "Lep2Id/F");
+    tree->Branch("Lep2Id", &LepId[1], "Lep2Id/I");
 
     tree->Branch("Lep3Pt", &LepPt[2], "Lep3Pt/F");
     tree->Branch("Lep3Eta", &LepEta[2], "Lep3Eta/F");
     tree->Branch("Lep3Phi", &LepPhi[2], "Lep3Phi/F");
     tree->Branch("Lep3Mass", &LepMass[2], "Lep3Mass/F");
-    tree->Branch("Lep3Id", &LepId[2], "Lep3Id/F");
+    tree->Branch("Lep3Id", &LepId[2], "Lep3Id/I");
 
     tree->Branch("Lep4Pt", &LepPt[3], "Lep4Pt/F");
     tree->Branch("Lep4Eta", &LepEta[3], "Lep4Eta/F");
     tree->Branch("Lep4Phi", &LepPhi[3], "Lep4Phi/F");
     tree->Branch("Lep4Mass", &LepMass[3], "Lep4Mass/F");
-    tree->Branch("Lep4Id", &LepId[3], "Lep4Id/F");
+    tree->Branch("Lep4Id", &LepId[3], "Lep4Id/I");
 /*
     tree->Branch("GenLep1Pt", &GenLepPt[0], "GenLep1Pt/F");
     tree->Branch("GenLep1Eta", &GenLepEta[0], "GenLep1Eta/F");
     tree->Branch("GenLep1Phi", &GenLepPhi[0], "GenLep1Phi/F");
     tree->Branch("GenLep1Mass", &GenLepMass[0], "GenLep1Mass/F");
-    tree->Branch("GenLep1Id", &GenLepId[0], "GenLep1Id/F");
+    tree->Branch("GenLep1Id", &GenLepId[0], "GenLep1Id/I");
 
     tree->Branch("GenLep2Pt", &GenLepPt[1], "GenLep2Pt/F");
     tree->Branch("GenLep2Eta", &GenLepEta[1], "GenLep2Eta/F");
     tree->Branch("GenLep2Phi", &GenLepPhi[1], "GenLep2Phi/F");
     tree->Branch("GenLep2Mass", &GenLepMass[1], "GenLep2Mass/F");
-    tree->Branch("GenLep2Id", &GenLepId[1], "GenLep2Id/F");
+    tree->Branch("GenLep2Id", &GenLepId[1], "GenLep2Id/I");
 
     tree->Branch("GenLep3Pt", &GenLepPt[2], "GenLep3Pt/F");
     tree->Branch("GenLep3Eta", &GenLepEta[2], "GenLep3Eta/F");
     tree->Branch("GenLep3Phi", &GenLepPhi[2], "GenLep3Phi/F");
     tree->Branch("GenLep3Mass", &GenLepMass[2], "GenLep3Mass/F");
-    tree->Branch("GenLep3Id", &GenLepId[2], "GenLep3Id/F");
+    tree->Branch("GenLep3Id", &GenLepId[2], "GenLep3Id/I");
 
     tree->Branch("GenLep4Pt", &GenLepPt[3], "GenLep4Pt/F");
     tree->Branch("GenLep4Eta", &GenLepEta[3], "GenLep4Eta/F");
     tree->Branch("GenLep4Phi", &GenLepPhi[3], "GenLep4Phi/F");
     tree->Branch("GenLep4Mass", &GenLepMass[3], "GenLep4Mass/F");
-    tree->Branch("GenLep4Id", &GenLepId[3], "GenLep4Id/F");
+    tree->Branch("GenLep4Id", &GenLepId[3], "GenLep4Id/I");
 */
 }
 
