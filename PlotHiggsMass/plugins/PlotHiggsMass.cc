@@ -2,7 +2,7 @@
 //
 // Package:    PlotHiggsMass
 // Class:      PlotHiggsMass
-// 
+//
 /**\class PlotHiggsMass PlotHiggsMass.cc GenLevelTools/PlotHiggsMass/plugins/PlotHiggsMass.cc
 
  Description: [one line class summary]
@@ -78,12 +78,12 @@ class PlotHiggsMass : public edm::EDAnalyzer {
 
       TTree *GenEventsTree;
 
-      ULong64_t Run, Event, LumiSect;    
+      ULong64_t Run, Event, LumiSect;
 
       int nleptons, njets;
-      double pT_H, mH, pT_jet0; 
-    
-      TClonesArray *p4_lep; TClonesArray *p4_lepS1; TClonesArray *p4_jet; 
+      double pT_H, mH, pT_jet0;
+
+      TClonesArray *p4_lep; TClonesArray *p4_lepS1; TClonesArray *p4_jet;
       TClonesArray *p4_4l; TClonesArray *p4_4lS1; TClonesArray *p4_Z; TClonesArray *p4_ZZ;
 
       std::vector<int> id_lep; std::vector<int> status_lep; std::vector<int> motherid_lep;
@@ -122,7 +122,7 @@ PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) : iC(consumesColl
     h_nleptons    = fs->make<TH1F>( "h_nleptons", "", 1,  0., 1. );
 
     GenEventsTree = new TTree("GenEvents","GenEvents");
-    
+
     //now do what ever initialization is needed
 
     particleCollectionToken_ = iC.consumes<reco::GenParticleCollection> (edm::InputTag("genParticles"));
@@ -159,7 +159,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     // GEN collection
     edm::Handle<reco::GenParticleCollection> genParticles;
     iEvent.getByToken(particleCollectionToken_, genParticles);
-   
+
     edm::Handle<reco::GenJetCollection> genJets;
     iEvent.getByToken(jetCollectionToken_, genJets);
 
@@ -176,7 +176,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     id_lep.clear(); status_lep.clear(); motherid_lep.clear();
     AssociatedParticlePt->clear(); AssociatedParticleEta->clear(); AssociatedParticlePhi->clear(); AssociatedParticleMass->clear(); AssociatedParticleId->clear();
 
-    massZ1=-1.0; massZ2=-1.0; mass4l=-1.0; 
+    massZ1=-1.0; massZ2=-1.0; mass4l=-1.0;
     cosTheta1=9999.0; cosTheta2=9999.0; cosThetaStar=9999.0; Phi=9999.0; Phi1=9999.0;
     finalState=-1;
     passedFiducial=0;
@@ -186,7 +186,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     reco::GenParticleCollection::const_iterator  genPart;
     for(genPart = genParticles->begin(); genPart != genParticles->end(); genPart++) {
-        
+
         if (genPart->pdgId()==25) {
             pT_H = genPart->pt();
             mH = genPart->mass();
@@ -232,9 +232,9 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     std::sort(Zs.begin(), Zs.end(), sortByM);
     for (unsigned int i=0; i<Zs.size(); ++i) {
-        new ( (*p4_Z)[i] ) TLorentzVector(Zs[i].px(),Zs[i].py(),Zs[i].pz(),Zs[i].energy());    
-    }    
-    if (Zs.size()>=2) { 
+        new ( (*p4_Z)[i] ) TLorentzVector(Zs[i].px(),Zs[i].py(),Zs[i].pz(),Zs[i].energy());
+    }
+    if (Zs.size()>=2) {
         TLorentzVector *Z_1 = (TLorentzVector*) p4_Z->At(0);
         TLorentzVector *Z_2 = (TLorentzVector*) p4_Z->At(1);
         TLorentzVector p4_Z1Z2 = (*Z_1)+(*Z_2);
@@ -245,7 +245,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     for (unsigned int i=0; i<leptons.size(); ++i) {
         new ( (*p4_lep)[i] ) TLorentzVector(leptons[i].px(),leptons[i].py(),leptons[i].pz(),leptons[i].energy());
         id_lep.push_back(leptons[i].pdgId());
-        status_lep.push_back(leptons[i].status());       
+        status_lep.push_back(leptons[i].status());
         motherid_lep.push_back(leptons[i].mother()->pdgId());
     }
 
@@ -276,7 +276,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 TLorentzVector mll = (*li)+(*lj);
                 if(abs(mll.M()-91.1876)<offshell){
                     double mZ1 = mll.M();
-                    L1 = i; L2 = j; offshell = abs(mZ1-91.1876);          
+                    L1 = i; L2 = j; offshell = abs(mZ1-91.1876);
                 }
             }
         }
@@ -285,7 +285,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         Z11 = (TLorentzVector*) p4_lep->At(L1);
         Z12 = (TLorentzVector*) p4_lep->At(L2);
         TLorentzVector Z1 = (*Z11)+(*Z12);
-        
+
         bool passZ1=false;
         if(Z1.M()>40 && Z1.M()<120) passZ1 = true;
         massZ1=Z1.M();
@@ -296,11 +296,11 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             if((int)i==L1 || (int)i==L2) continue; // can not be the lep from Z1
             for(unsigned int j=i+1; j<Nlep; j++){
                 if((int)j==L1 || (int)j==L2) continue; // can not be the lep from Z1
-                if((id_lep[i]+id_lep[j])!=0) continue;            
+                if((id_lep[i]+id_lep[j])!=0) continue;
 
                 TLorentzVector *li, *lj;
                 li = (TLorentzVector*) p4_lep->At(i);
-                lj = (TLorentzVector*) p4_lep->At(j);            
+                lj = (TLorentzVector*) p4_lep->At(j);
                 TLorentzVector Z2 = (*li)+(*lj);
 
                 if ( ( (*li).Pt()+(*lj).Pt() ) >=pTL34 ) { // choose high sum pT pair satisfy the following selection
@@ -312,9 +312,9 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                         if (passZ2 == false) {L3 = i; L4 = j;}
                     }
                 }
-            
-            } 
-        } 
+
+            }
+        }
 
         LepPt[0] = ((TLorentzVector*)p4_lep->At(L1))->Pt();
         LepEta[0] = ((TLorentzVector*)p4_lep->At(L1))->Eta();
@@ -351,20 +351,20 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             TLorentzVector Z2 = (*Z21)+(*Z22);
             massZ2=Z2.M();
 
-            // prepare TLorentzVector(s)                        
+            // prepare TLorentzVector(s)
             TLorentzVector L11P4,L12P4,L21P4,L22P4;
             // convention for leptons - example for 2mu2e event:    pp -> H -> ZZ -> mu-(p3)+mu+(p4)+e-(p5)+e+(p6)
             L11P4.SetPxPyPzE(Z11->Px(), Z11->Py(), Z11->Pz(), Z11->E());
             L12P4.SetPxPyPzE(Z12->Px(), Z12->Py(), Z12->Pz(), Z12->E());
             L21P4.SetPxPyPzE(Z21->Px(), Z21->Py(), Z21->Pz(), Z21->E());
             L22P4.SetPxPyPzE(Z22->Px(), Z22->Py(), Z22->Pz(), Z22->E());
-            
-            // prepare vectors of TLorentzVector(s) 
+
+            // prepare vectors of TLorentzVector(s)
             std::vector<TLorentzVector> partP;
             std::vector<int> partId;
             partP.push_back(L11P4); partP.push_back(L12P4); partP.push_back(L21P4); partP.push_back(L22P4);
             partId.push_back(id_lep[L1]); partId.push_back(id_lep[L2]); partId.push_back(id_lep[L3]); partId.push_back(id_lep[L4]);
-            
+
         }
     }
 
@@ -384,7 +384,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         TLorentzVector p4_4lepS1 = (*LS1_1)+(*LS1_2)+(*LS1_3)+(*LS1_4);
         new ( (*p4_4lS1)[0] ) TLorentzVector(p4_4lepS1.Px(), p4_4lepS1.Py(), p4_4lepS1.Pz(), p4_4lepS1.E());
     }
-     
+
     reco::GenJetCollection::const_iterator  genJet;
     for(genJet = genJets->begin(); genJet != genJets->end(); genJet++) {
         double min_dR = 9999.0;
@@ -392,8 +392,8 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             double dR = deltaR(leptonsS1[i].eta(), leptonsS1[i].phi(), genJet->eta(), genJet->phi());
             if (dR<min_dR) min_dR = dR;
         }
-        if (min_dR>0.5 && genJet->pt()>30.0) { 
-            njets++;            
+        if (min_dR>0.5 && genJet->pt()>30.0) {
+            njets++;
             jets.push_back(*genJet);
         }
     }
@@ -421,12 +421,12 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     h_nleptons->Fill( nleptons );
 
     GenEventsTree->Fill();
-        
+
 }
 
 
 // ------------ method called once each job just before starting event loop  ------------
-void 
+void
 PlotHiggsMass::beginJob()
 {
 
@@ -544,14 +544,14 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
-void 
-PlotHiggsMass::endJob() 
+void
+PlotHiggsMass::endJob()
 {
 }
 
 // ------------ method called when starting to processes a run  ------------
 /*
-void 
+void
 PlotHiggsMass::beginRun(edm::Run const&, edm::EventSetup const&)
 {
 }
@@ -559,7 +559,7 @@ PlotHiggsMass::beginRun(edm::Run const&, edm::EventSetup const&)
 
 // ------------ method called when ending the processing of a run  ------------
 /*
-void 
+void
 PlotHiggsMass::endRun(edm::Run const&, edm::EventSetup const&)
 {
 }
@@ -567,7 +567,7 @@ PlotHiggsMass::endRun(edm::Run const&, edm::EventSetup const&)
 
 // ------------ method called when starting to processes a luminosity block  ------------
 /*
-void 
+void
 PlotHiggsMass::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
@@ -575,7 +575,7 @@ PlotHiggsMass::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup
 
 // ------------ method called when ending the processing of a luminosity block  ------------
 /*
-void 
+void
 PlotHiggsMass::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
