@@ -219,8 +219,6 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         }
     }
 
-    cout << endl;
-
     int ep=0, em=0, mup=0, mum=0, taup=0, taum=0;
     for (auto l : leptons) {
       if (l.pdgId() == +11) ep++;
