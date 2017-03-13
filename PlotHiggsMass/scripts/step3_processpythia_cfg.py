@@ -24,6 +24,7 @@ except:
 process = cms.Process("Demo")
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
+process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
 process.load("RecoJets.Configuration.GenJetParticles_cff")
 process.load("RecoJets.JetProducers.ak5GenJets_cfi")
