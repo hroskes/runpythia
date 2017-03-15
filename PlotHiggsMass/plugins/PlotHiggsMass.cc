@@ -61,6 +61,7 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       static bool sortByPt( const reco::GenParticle &p1, const reco::GenParticle &p2 ){ return (p1.pt() > p2.pt()); };
       static bool sortByM( const reco::GenParticle &p1, const reco::GenParticle &p2 ){ return (p1.mass() > p2.mass()); };
       static bool sortJetsByPt( const reco::GenJet &p1, const reco::GenJet &p2 ){ return (p1.pt() > p2.pt()); };
+      static bool sortPointerByPz( const reco::Candidate *&p1, const reco::Candidate *&p2 ){ return (p1->pz() > p2->pz()); };
 
    private:
 
@@ -94,6 +95,12 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       std::vector<double> *AssociatedParticleMass;
       std::vector<int> *AssociatedParticleId;
 
+      std::vector<double> *GenAssociatedParticlePt;
+      std::vector<double> *GenAssociatedParticleEta;
+      std::vector<double> *GenAssociatedParticlePhi;
+      std::vector<double> *GenAssociatedParticleMass;
+      std::vector<int> *GenAssociatedParticleId;
+
       float cosTheta1, cosTheta2, cosThetaStar, Phi, Phi1;
       double massZ1, massZ2, mass4l;
       int finalState;
@@ -101,8 +108,8 @@ class PlotHiggsMass : public edm::EDAnalyzer {
 
       float LepPt[4], LepEta[4], LepPhi[4], LepMass[4];
       int LepId[4];
-//      float GenLepPt[4], GenLepEta[4], GenLepPhi[4], GenLepMass[4];
-//      int GenLepId[4];
+      float GenLepPt[4], GenLepEta[4], GenLepPhi[4], GenLepMass[4];
+      int GenLepId[4];
 
       double MaxDijetM, Dijet01M;
 
@@ -133,6 +140,12 @@ PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) : iC(consumesColl
     AssociatedParticlePhi = new std::vector<double>;
     AssociatedParticleMass = new std::vector<double>;
     AssociatedParticleId = new std::vector<int>;
+
+    GenAssociatedParticlePt = new std::vector<double>;
+    GenAssociatedParticleEta = new std::vector<double>;
+    GenAssociatedParticlePhi = new std::vector<double>;
+    GenAssociatedParticleMass = new std::vector<double>;
+    GenAssociatedParticleId = new std::vector<int>;
 
 }
 
@@ -165,6 +178,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     std::vector<reco::GenParticle> leptons;
     std::vector<reco::GenParticle> leptonsS1;
+    std::vector<reco::GenParticle> genleptons;
     std::vector<reco::GenParticle> Zs;
     std::vector<reco::GenJet> jets;
 
@@ -175,6 +189,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     p4_lep->Clear(); p4_lepS1->Clear(); p4_jet->Clear(); p4_4l->Clear(); p4_4lS1->Clear(); p4_Z->Clear(); p4_ZZ->Clear();
     id_lep.clear(); status_lep.clear(); motherid_lep.clear();
     AssociatedParticlePt->clear(); AssociatedParticleEta->clear(); AssociatedParticlePhi->clear(); AssociatedParticleMass->clear(); AssociatedParticleId->clear();
+    GenAssociatedParticlePt->clear(); GenAssociatedParticleEta->clear(); GenAssociatedParticlePhi->clear(); GenAssociatedParticleMass->clear(); GenAssociatedParticleId->clear();
 
     massZ1=-1.0; massZ2=-1.0; mass4l=-1.0;
     cosTheta1=9999.0; cosTheta2=9999.0; cosThetaStar=9999.0; Phi=9999.0; Phi1=9999.0;
@@ -184,40 +199,73 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     MaxDijetM=-1.0;
     Dijet01M=-1.0;
 
-    reco::GenParticleCollection::const_iterator  genPart;
-    for(genPart = genParticles->begin(); genPart != genParticles->end(); genPart++) {
+    reco::GenParticle higgs;
+    vector<const reco::Candidate*> higgsmothers;
 
-        if (genPart->pdgId()==25) {
-            pT_H = genPart->pt();
-            mH = genPart->mass();
-        }
-        if (genPart->pdgId()==23) {
-            Zs.push_back(*genPart);
-        }
-        std::vector<reco::GenParticle> genleptons;
+    for(auto genPart : *genParticles) {
 
-        if( abs(genPart->pdgId())==15 || abs(genPart->pdgId()) == 13 || abs(genPart->pdgId()) == 11 ) {
+        if (genPart.pdgId()==25) {
+            higgs = genPart;
+            pT_H = genPart.pt();
+            mH = genPart.mass();
+            for (unsigned int i = 0; i < genPart.numberOfMothers(); i++) {
+              higgsmothers.push_back(genPart.mother(i));
+            }
+            std::sort(higgsmothers.begin(), higgsmothers.end(), sortPointerByPz);
+        }
+    }
+    for(auto genPart : *genParticles) {
+
+        if (genPart.pdgId()==23) {
+            Zs.push_back(genPart);
+        }
+
+        if (abs(genPart.pdgId()) < 6 || (abs(genPart.pdgId()) >= 11 && abs(genPart.pdgId()) <= 16)) {
+            if( genPart.mother()->numberOfMothers() >= 1 && genPart.mother()->mother()->pdgId()==25 ) {
+                edm::LogInfo("Leptons") << "gen  " << genPart.pdgId() << " " << genPart.pt() << " " << genPart.eta();
+                genleptons.push_back(genPart);
+            } else if (genPart.numberOfMothers() == higgsmothers.size()){
+                vector<const reco::Candidate*> mothers;
+                for (unsigned int i = 0; i < genPart.numberOfMothers(); i++) {
+                  mothers.push_back(genPart.mother(i));
+                }
+                std::sort(mothers.begin(), mothers.end(), sortPointerByPz);
+
+                bool matches = true;
+                for (unsigned int i = 0; i < mothers.size(); i++) {
+                    if (! (mothers[i]->p4() == higgsmothers[i]->p4() && mothers[i]->pdgId() == higgsmothers[i]->pdgId()))
+                        matches = false;
+                }
+                if (matches) {
+                    GenAssociatedParticlePt->push_back(genPart.pt());
+                    GenAssociatedParticleEta->push_back(genPart.eta());
+                    GenAssociatedParticlePhi->push_back(genPart.phi());
+                    GenAssociatedParticleMass->push_back(genPart.mass());
+                    GenAssociatedParticleId->push_back(genPart.pdgId());
+                }
+            }
+        }
+
+        if( abs(genPart.pdgId())==15 || abs(genPart.pdgId()) == 13 || abs(genPart.pdgId()) == 11 ) {
 
             bool passcut = true;
-            if (abs(genPart->pdgId())==11 && (genPart->pt()<electronpTcut || abs(genPart->eta()) > electronetacut)) passcut = false;
-            if (abs(genPart->pdgId())==13 && (genPart->pt()<    muonpTcut || abs(genPart->eta()) >     muonetacut)) passcut = false;
-            if (abs(genPart->pdgId())==15) passcut = false;
+            if (abs(genPart.pdgId())==11 && (genPart.pt()<electronpTcut || abs(genPart.eta()) > electronetacut)) passcut = false;
+            if (abs(genPart.pdgId())==13 && (genPart.pt()<    muonpTcut || abs(genPart.eta()) >     muonetacut)) passcut = false;
+            if (abs(genPart.pdgId())==15) passcut = false;
 
-            if( genPart->mother()->pdgId()==23 || abs(genPart->mother()->pdgId())==24 ) {
-                edm::LogInfo("Leptons") << "gen  " << passcut << " " << genPart->pdgId() << " " << genPart->pt() << " " << genPart->eta();
-                genleptons.push_back(*genPart);
-            }
-
-            if(genPart->status()==1) {
-                edm::LogInfo("Leptons") << "reco " << passcut << " " << genPart->pdgId() << " " << genPart->pt() << " " << genPart->eta() << endl;
+            if(genPart.status()==1) {
+                edm::LogInfo("Leptons") << "reco " << passcut << " " << genPart.pdgId() << " " << genPart.pt() << " " << genPart.eta();
                 if (passcut) {
                     nleptons++;
-                    leptons.push_back(*genPart);
-                    leptonsS1.push_back(*genPart);
+                    leptons.push_back(genPart);
+                    leptonsS1.push_back(genPart);
                 }
             }
         }
     }
+
+    if (genleptons.size() != 4)
+      throw cms::Exception("GenLeptons") << genleptons.size() << " gen leptons in the event";
 
     int ep=0, em=0, mup=0, mum=0, taup=0, taum=0;
     for (auto l : leptons) {
@@ -479,6 +527,12 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
     tree->Branch("AssociatedParticleMass", &AssociatedParticleMass);
     tree->Branch("AssociatedParticleId", &AssociatedParticleId);
 
+    tree->Branch("GenAssociatedParticlePt", &GenAssociatedParticlePt);
+    tree->Branch("GenAssociatedParticleEta", &GenAssociatedParticleEta);
+    tree->Branch("GenAssociatedParticlePhi", &GenAssociatedParticlePhi);
+    tree->Branch("GenAssociatedParticleMass", &GenAssociatedParticleMass);
+    tree->Branch("GenAssociatedParticleId", &GenAssociatedParticleId);
+
     tree->Branch("cosTheta1",&cosTheta1,"cosTheta1/F");
     tree->Branch("cosTheta2",&cosTheta2,"cosTheta2/F");
     tree->Branch("cosThetaStar",&cosThetaStar,"cosThetaStar/F");
@@ -516,7 +570,7 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
     tree->Branch("Lep4Phi", &LepPhi[3], "Lep4Phi/F");
     tree->Branch("Lep4Mass", &LepMass[3], "Lep4Mass/F");
     tree->Branch("Lep4Id", &LepId[3], "Lep4Id/I");
-/*
+
     tree->Branch("GenLep1Pt", &GenLepPt[0], "GenLep1Pt/F");
     tree->Branch("GenLep1Eta", &GenLepEta[0], "GenLep1Eta/F");
     tree->Branch("GenLep1Phi", &GenLepPhi[0], "GenLep1Phi/F");
@@ -540,7 +594,7 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
     tree->Branch("GenLep4Phi", &GenLepPhi[3], "GenLep4Phi/F");
     tree->Branch("GenLep4Mass", &GenLepMass[3], "GenLep4Mass/F");
     tree->Branch("GenLep4Id", &GenLepId[3], "GenLep4Id/I");
-*/
+
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
