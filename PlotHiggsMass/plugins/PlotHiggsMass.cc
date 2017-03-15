@@ -191,6 +191,11 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     AssociatedParticlePt->clear(); AssociatedParticleEta->clear(); AssociatedParticlePhi->clear(); AssociatedParticleMass->clear(); AssociatedParticleId->clear();
     GenAssociatedParticlePt->clear(); GenAssociatedParticleEta->clear(); GenAssociatedParticlePhi->clear(); GenAssociatedParticleMass->clear(); GenAssociatedParticleId->clear();
 
+    LepPt[0] = LepEta[0] = LepPhi[0] = LepMass[0] = LepId[0] = 0;
+    LepPt[1] = LepEta[1] = LepPhi[1] = LepMass[1] = LepId[1] = 0;
+    LepPt[2] = LepEta[2] = LepPhi[2] = LepMass[2] = LepId[2] = 0;
+    LepPt[3] = LepEta[3] = LepPhi[3] = LepMass[3] = LepId[3] = 0;
+
     massZ1=-1.0; massZ2=-1.0; mass4l=-1.0;
     cosTheta1=9999.0; cosTheta2=9999.0; cosThetaStar=9999.0; Phi=9999.0; Phi1=9999.0;
     finalState=-1;
@@ -266,6 +271,14 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     if (genleptons.size() != 4)
       throw cms::Exception("GenLeptons") << genleptons.size() << " gen leptons in the event";
+
+    for (unsigned int i = 0; i < 4; i++) {
+        GenLepPt[i] = genleptons[i].pt();
+        GenLepEta[i] = genleptons[i].eta();
+        GenLepPhi[i] = genleptons[i].phi();
+        GenLepMass[i] = genleptons[i].mass();
+        GenLepId[i] = genleptons[i].pdgId();
+    }
 
     int ep=0, em=0, mup=0, mum=0, taup=0, taum=0;
     for (auto l : leptons) {
@@ -385,9 +398,9 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         LepMass[3] = ((TLorentzVector*)p4_lep->At(L4))->M();
 
         LepId[0] = leptons[L1].pdgId();
-        LepId[1] = leptons[L1].pdgId();
-        LepId[2] = leptons[L1].pdgId();
-        LepId[3] = leptons[L1].pdgId();
+        LepId[1] = leptons[L2].pdgId();
+        LepId[2] = leptons[L3].pdgId();
+        LepId[3] = leptons[L4].pdgId();
 
         if (passZ1 && passZ2) {
 
