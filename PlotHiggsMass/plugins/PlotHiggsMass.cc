@@ -101,6 +101,9 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       std::vector<double> *GenAssociatedParticleMass;
       std::vector<int> *GenAssociatedParticleId;
 
+      std::vector<double> *GenMotherPz;
+      std::vector<int> *GenMotherId;
+
       float cosTheta1, cosTheta2, cosThetaStar, Phi, Phi1;
       double massZ1, massZ2, mass4l;
       int finalState;
@@ -120,11 +123,19 @@ class PlotHiggsMass : public edm::EDAnalyzer {
 
       int isSelected;
 
+      enum EnumVBForVH {VBF, VH} VBForVH;
 };
 
-PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) : iC(consumesCollector())
-
+PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) :
+  iC(consumesCollector())
 {
+    if (iConfig.getParameter<std::string>("VBForVH") == "VBF")
+      VBForVH = VBF;
+    else if (iConfig.getParameter<std::string>("VBForVH") == "VH")
+      VBForVH = VBF;
+    else
+      throw cms::Exception("BadInput") << "VBForVH should be VBF or VH";
+
     edm::Service<TFileService> fs;
     h_nleptons    = fs->make<TH1F>( "h_nleptons", "", 1,  0., 1. );
 
@@ -147,11 +158,28 @@ PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) : iC(consumesColl
     GenAssociatedParticleMass = new std::vector<double>;
     GenAssociatedParticleId = new std::vector<int>;
 
+    GenMotherPz = new std::vector<double>;
+    GenMotherId = new std::vector<int>;
+
 }
 
 
 PlotHiggsMass::~PlotHiggsMass()
 {
+    delete AssociatedParticlePt;
+    delete AssociatedParticleEta;
+    delete AssociatedParticlePhi;
+    delete AssociatedParticleMass;
+    delete AssociatedParticleId;
+
+    delete GenAssociatedParticlePt;
+    delete GenAssociatedParticleEta;
+    delete GenAssociatedParticlePhi;
+    delete GenAssociatedParticleMass;
+    delete GenAssociatedParticleId;
+
+    delete GenMotherPz;
+    delete GenMotherId;
 }
 
 
@@ -190,6 +218,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     id_lep.clear(); status_lep.clear(); motherid_lep.clear();
     AssociatedParticlePt->clear(); AssociatedParticleEta->clear(); AssociatedParticlePhi->clear(); AssociatedParticleMass->clear(); AssociatedParticleId->clear();
     GenAssociatedParticlePt->clear(); GenAssociatedParticleEta->clear(); GenAssociatedParticlePhi->clear(); GenAssociatedParticleMass->clear(); GenAssociatedParticleId->clear();
+    GenMotherPz->clear(); GenMotherId->clear();
 
     LepPt[0] = LepEta[0] = LepPhi[0] = LepMass[0] = LepId[0] = 0;
     LepPt[1] = LepEta[1] = LepPhi[1] = LepMass[1] = LepId[1] = 0;
@@ -213,10 +242,17 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             higgs = genPart;
             pT_H = genPart.pt();
             mH = genPart.mass();
-            for (unsigned int i = 0; i < genPart.numberOfMothers(); i++) {
-              higgsmothers.push_back(genPart.mother(i));
+            const reco::Candidate *higgsptr = &genPart;
+            if (higgsptr->mother(0)->pdgId()!=25) {
+              for (unsigned int i = 0; i < genPart.numberOfMothers(); i++) {
+                edm::LogInfo("HiggsMother") << i << " " << higgsptr->mother(i)->pt() << " " << higgsptr->mother(i)->pdgId();
+                higgsmothers.push_back(higgsptr->mother(i));
+                GenMotherId->push_back(higgsptr->mother(i)->pdgId());
+                GenMotherPz->push_back(higgsptr->mother(i)->pz());
+              }
+              std::sort(higgsmothers.begin(), higgsmothers.end(), sortPointerByPz);
+              break;
             }
-            std::sort(higgsmothers.begin(), higgsmothers.end(), sortPointerByPz);
         }
     }
     for(auto genPart : *genParticles) {
@@ -232,21 +268,26 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             } else if (genPart.numberOfMothers() == higgsmothers.size()){
                 vector<const reco::Candidate*> mothers;
                 for (unsigned int i = 0; i < genPart.numberOfMothers(); i++) {
+                  edm::LogInfo("JetMother") << i << " " << genPart.mother(i)->pt() << " " << genPart.mother(i)->pdgId();
                   mothers.push_back(genPart.mother(i));
                 }
                 std::sort(mothers.begin(), mothers.end(), sortPointerByPz);
 
-                bool matches = true;
-                for (unsigned int i = 0; i < mothers.size(); i++) {
-                    if (! (mothers[i]->p4() == higgsmothers[i]->p4() && mothers[i]->pdgId() == higgsmothers[i]->pdgId()))
-                        matches = false;
-                }
-                if (matches) {
-                    GenAssociatedParticlePt->push_back(genPart.pt());
-                    GenAssociatedParticleEta->push_back(genPart.eta());
-                    GenAssociatedParticlePhi->push_back(genPart.phi());
-                    GenAssociatedParticleMass->push_back(genPart.mass());
-                    GenAssociatedParticleId->push_back(genPart.pdgId());
+                if (VBForVH == VBF) {
+                  bool matches = true;
+                  for (unsigned int i = 0; i < mothers.size(); i++) {
+                      if (! (mothers[i]->p4() == higgsmothers[i]->p4() && mothers[i]->pdgId() == higgsmothers[i]->pdgId()))
+                          matches = false;
+                  }
+                  if (matches) {
+                      GenAssociatedParticlePt->push_back(genPart.pt());
+                      GenAssociatedParticleEta->push_back(genPart.eta());
+                      GenAssociatedParticlePhi->push_back(genPart.phi());
+                      GenAssociatedParticleMass->push_back(genPart.mass());
+                      GenAssociatedParticleId->push_back(genPart.pdgId());
+                  }
+                } else {
+                  throw cms::Exception("Process") << "Can't handle VH yet";
                 }
             }
         }
@@ -545,6 +586,9 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
     tree->Branch("GenAssociatedParticlePhi", &GenAssociatedParticlePhi);
     tree->Branch("GenAssociatedParticleMass", &GenAssociatedParticleMass);
     tree->Branch("GenAssociatedParticleId", &GenAssociatedParticleId);
+
+    tree->Branch("GenMotherPz", &GenMotherPz);
+    tree->Branch("GenMotherId", &GenMotherId);
 
     tree->Branch("cosTheta1",&cosTheta1,"cosTheta1/F");
     tree->Branch("cosTheta2",&cosTheta2,"cosTheta2/F");

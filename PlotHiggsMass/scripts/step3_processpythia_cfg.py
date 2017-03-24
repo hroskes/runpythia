@@ -10,15 +10,21 @@ try:
     if not outfile.endswith(".root") or os.path.exists(outfile):
         raise ValueError("First argument {} should end with .root and not exist".format(sys.argv[2]))
 
-    infiles = sys.argv[3:]
+    VBForVH = sys.argv[3].upper()
+    if VBForVH in ("ZH", "WH"):
+        VBForVH = "VH"
+    if VBForVH not in ("VBF", "VH"):
+        raise ValueError("Second argument should be VBF or VH")
+
+    infiles = sys.argv[4:]
     if not infiles:
         raise ValueError("No input files!")
     for filename in infiles:
         if not filename.endswith(".root") or not os.path.exists(filename):
-            raise ValueError("Second argument and further {} should end with .root and exist".format(filename))
+            raise ValueError("Third argument and further {} should end with .root and exist".format(filename))
 except:
     print sys.argv
-    print "cmsRun", sys.argv[1], "outputfile.root inputfile1.root inputfile2.root ..."
+    print "cmsRun", sys.argv[1], "outputfile.root VBForVH inputfile1.root inputfile2.root ..."
     raise
 
 process = cms.Process("Demo")
@@ -38,7 +44,8 @@ process.TFileService = cms.Service("TFileService",
     closeFileFast = cms.untracked.bool(True)
 )
 
-process.demo = cms.EDAnalyzer('PlotHiggsMass'
+process.demo = cms.EDAnalyzer('PlotHiggsMass',
+    VBForVH = cms.string(VBForVH)
 )
 
 
