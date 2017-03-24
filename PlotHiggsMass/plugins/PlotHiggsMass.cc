@@ -265,7 +265,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             if( genPart.mother()->numberOfMothers() >= 1 && genPart.mother()->mother()->pdgId()==25 ) {
                 edm::LogInfo("Leptons") << "gen  " << genPart.pdgId() << " " << genPart.pt() << " " << genPart.eta();
                 genleptons.push_back(genPart);
-            } else if (genPart.numberOfMothers() == higgsmothers.size()){
+            } else if (genPart.numberOfMothers() == higgsmothers.size() && VBForVH == VBF){
                 vector<const reco::Candidate*> mothers;
                 for (unsigned int i = 0; i < genPart.numberOfMothers(); i++) {
                   edm::LogInfo("JetMother") << i << " " << genPart.mother(i)->pt() << " " << genPart.mother(i)->pdgId();
@@ -273,22 +273,24 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 }
                 std::sort(mothers.begin(), mothers.end(), sortPointerByPz);
 
-                if (VBForVH == VBF) {
-                  bool matches = true;
-                  for (unsigned int i = 0; i < mothers.size(); i++) {
-                      if (! (mothers[i]->p4() == higgsmothers[i]->p4() && mothers[i]->pdgId() == higgsmothers[i]->pdgId()))
-                          matches = false;
-                  }
-                  if (matches) {
-                      GenAssociatedParticlePt->push_back(genPart.pt());
-                      GenAssociatedParticleEta->push_back(genPart.eta());
-                      GenAssociatedParticlePhi->push_back(genPart.phi());
-                      GenAssociatedParticleMass->push_back(genPart.mass());
-                      GenAssociatedParticleId->push_back(genPart.pdgId());
-                  }
-                } else {
-                  throw cms::Exception("Process") << "Can't handle VH yet";
+                bool matches = true;
+                for (unsigned int i = 0; i < mothers.size(); i++) {
+                    if (! (mothers[i]->p4() == higgsmothers[i]->p4() && mothers[i]->pdgId() == higgsmothers[i]->pdgId()))
+                        matches = false;
                 }
+                if (matches) {
+                    GenAssociatedParticlePt->push_back(genPart.pt());
+                    GenAssociatedParticleEta->push_back(genPart.eta());
+                    GenAssociatedParticlePhi->push_back(genPart.phi());
+                    GenAssociatedParticleMass->push_back(genPart.mass());
+                    GenAssociatedParticleId->push_back(genPart.pdgId());
+                }
+            } else if (genPart.numberOfMothers() == 1 && (genPart.mother(0)->pdgId()==23 || abs(genPart.mother(0)->pdgId())==24)) {
+                GenAssociatedParticlePt->push_back(genPart.pt());
+                GenAssociatedParticleEta->push_back(genPart.eta());
+                GenAssociatedParticlePhi->push_back(genPart.phi());
+                GenAssociatedParticleMass->push_back(genPart.mass());
+                GenAssociatedParticleId->push_back(genPart.pdgId());
             }
         }
 
