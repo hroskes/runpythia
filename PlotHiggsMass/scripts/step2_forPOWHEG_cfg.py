@@ -4,9 +4,19 @@
 # Revision: 1.19 
 # Source: /local/reps/CMSSW/CMSSW/Configuration/Applications/python/ConfigBuilder.py,v 
 # with command line options: Configuration/GenProduction/python/HIG-RunIIWinter15GS-00123-fragment.py --filein file:WH_125_LHE.root --fileout file:HIG-RunIIWinter15GS-00123.root --mc --eventcontent RAWSIM --customise SLHCUpgradeSimulations/Configuration/postLS1Customs.customisePostLS1,Configuration/DataProcessing/Utils.addMonitoring --datatier GEN --inputCommands keep *,drop LHEXMLStringProduct_*_*_* --conditions MCRUN2_71_V1::All --beamspot NominalCollision2015 --step GEN --magField 38T_PostLS1 --python_filename HIG-RunIIWinter15GS-00123_1_cfg.py --no_exec -n 53
-
-assert False, "check forJHUGen to see how to modify"
 import FWCore.ParameterSet.Config as cms
+import sys
+
+argv = sys.argv[2:]
+try:
+    infile = argv[0]
+    firstevent = int(argv[1])
+    lastevent = int(argv[2])
+    outfile = argv[3]
+except:
+    print sys.argv
+    print "cmsRun", sys.argv[1], "infile firstevent lastevent outfile"
+    raise
 
 process = cms.Process('GEN')
 
@@ -24,19 +34,20 @@ process.load('GeneratorInterface.Core.genFilterSummary_cff')
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
-process.MessageLogger.cerr.FwkReport.reportEvery = 5000
+process.MessageLogger.cerr.FwkReport.reportEvery = 1
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(-1)
+    input = cms.untracked.int32(lastevent - firstevent + 1)
 )
 
 # Input source
 process.source = cms.Source("PoolSource",
     secondaryFileNames = cms.untracked.vstring(),
-    fileNames = cms.untracked.vstring('file:ggH_125_LHE.root'),
+    fileNames = cms.untracked.vstring('file:'+infile),
     inputCommands = cms.untracked.vstring('keep *', 
         'drop LHEXMLStringProduct_*_*_*'),
-    dropDescendantsOfDroppedBranches = cms.untracked.bool(False)
+    dropDescendantsOfDroppedBranches = cms.untracked.bool(False),
+    skipEvents = cms.untracked.uint32(firstevent-1),
 )
 
 process.options = cms.untracked.PSet(
@@ -56,7 +67,7 @@ process.RAWSIMoutput = cms.OutputModule("PoolOutputModule",
     splitLevel = cms.untracked.int32(0),
     eventAutoFlushCompressedSize = cms.untracked.int32(5242880),
     outputCommands = process.RAWSIMEventContent.outputCommands,
-    fileName = cms.untracked.string('file:ggH_125_GEN.root'),
+    fileName = cms.untracked.string('file:'+outfile),
     dataset = cms.untracked.PSet(
         filterName = cms.untracked.string(''),
         dataTier = cms.untracked.string('GEN')
@@ -71,7 +82,7 @@ process.RAWSIMoutput = cms.OutputModule("PoolOutputModule",
 # Other statements
 process.genstepfilter.triggerConditions=cms.vstring("generation_step")
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, 'MCRUN2_71_V1::All', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, 'MCRUN2_71_V1', '')
 
 process.generator = cms.EDFilter("Pythia8HadronizerFilter",
     pythiaPylistVerbosity = cms.untracked.int32(1),
