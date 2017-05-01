@@ -1,3 +1,4 @@
+#!/usr/bin/env cmsRun
 # Auto generated configuration file
 # using: 
 # Revision: 1.19 
