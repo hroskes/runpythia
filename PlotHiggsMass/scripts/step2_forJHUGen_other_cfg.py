@@ -82,8 +82,7 @@ process.generator = cms.EDFilter("Pythia8HadronizerFilter",
     comEnergy = cms.double(13000.0),
     maxEventsToPrint = cms.untracked.int32(1),
     PythiaParameters = cms.PSet(
-        pythia8CommonSettings = cms.vstring('Tune:preferLHAPDF = 2', 
-            'Main:timesAllowErrors = 10000', 
+        pythia8CommonSettings = cms.vstring('Main:timesAllowErrors = 10000', 
             'Check:epTolErr = 0.01', 
             'Beams:setProductionScalesFromLHEF = off', 
             'SLHA:keepSM = on', 
@@ -96,19 +95,14 @@ process.generator = cms.EDFilter("Pythia8HadronizerFilter",
             'MultipartonInteractions:pT0Ref=2.4024', 
             'MultipartonInteractions:ecmPow=0.25208', 
             'MultipartonInteractions:expPow=1.6'),
-        pythia8PowhegEmissionVetoSettings = cms.vstring('POWHEG:veto = 1', 
-            'POWHEG:pTdef = 1', 
-            'POWHEG:emitted = 0', 
-            'POWHEG:pTemt = 0', 
-            'POWHEG:pThard = 0', 
-            'POWHEG:vetoCount = 100', 
-            'SpaceShower:pTmaxMatch = 2', 
-            'TimeShower:pTmaxMatch = 2'),
-        processParameters = cms.vstring('POWHEG:nFinal = 1'),
-        parameterSets = cms.vstring('pythia8CommonSettings', 
-            'pythia8CUEP8M1Settings', 
-            'pythia8PowhegEmissionVetoSettings', 
-            'processParameters')
+        processParameters = cms.vstring(
+            'SpaceShower:pTmaxMatch = 1',
+            'TimeShower:pTmaxMatch = 1',
+        ),
+        parameterSets = cms.vstring('pythia8CommonSettings',
+                                    'pythia8CUEP8M1Settings',
+                                    'processParameters'
+        )
     )
 )
 
