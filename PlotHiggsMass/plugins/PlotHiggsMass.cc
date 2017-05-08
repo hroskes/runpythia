@@ -64,8 +64,8 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       static bool sortJetsByPt( const reco::GenJet &p1, const reco::GenJet &p2 ){ return (p1.pt() > p2.pt()); };
       static bool sortPointerByPz( const reco::Candidate *&p1, const reco::Candidate *&p2 ){ return (p1->pz() > p2->pz()); };
 
-      void smearlepton(TLorentzVector* lepton, int id);
-      void smearjet(TLorentzVector* jet, int id);
+      void smearlepton(TLorentzVector& lepton, int id);
+      void smearjet(TLorentzVector& jet, int id);
 
    private:
 
@@ -79,18 +79,11 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       edm::EDGetTokenT<reco::GenParticleCollection> particleCollectionToken_;
       edm::EDGetTokenT<reco::GenJetCollection> jetCollectionToken_;
 
-      TH1F* h_nleptons;
-
       TTree *GenEventsTree;
 
       ULong64_t Run, Event, LumiSect;
 
-      int nleptons, njets;
-      double pT_H, mH, pT_jet0;
-
-      TClonesArray *p4_lep; TClonesArray *p4_lepS1; TClonesArray *p4_jet;
-      TClonesArray *p4_4l; TClonesArray *p4_4lS1; TClonesArray *p4_Z; TClonesArray *p4_ZZ;
-
+      std::vector<TLorentzVector> p4_lep, p4_jet;
       std::vector<int> id_lep; std::vector<int> status_lep; std::vector<int> motherid_lep;
 
       std::vector<double> *AssociatedParticlePt;
@@ -108,17 +101,12 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       std::vector<double> *GenMotherPz;
       std::vector<int> *GenMotherId;
 
-      float cosTheta1, cosTheta2, cosThetaStar, Phi, Phi1;
-      double massZ1, massZ2, mass4l;
-      int finalState;
-      int passedFiducial;
+      double Z1Mass, Z2Mass, ZZMass;
 
       float LepPt[4], LepEta[4], LepPhi[4], LepMass[4];
       int LepId[4];
       float GenLepPt[4], GenLepEta[4], GenLepPhi[4], GenLepMass[4];
       int GenLepId[4];
-
-      double MaxDijetM, Dijet01M;
 
       const constexpr static double electronetacut = 2.5;
       const constexpr static double electronpTcut = 7.;
@@ -169,7 +157,6 @@ PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) :
       throw cms::Exception("BadInput") << "VBForVH should be VBF, VH, ggH, or qqZZ";
 
     edm::Service<TFileService> fs;
-    h_nleptons    = fs->make<TH1F>( "h_nleptons", "", 1,  0., 1. );
 
     GenEventsTree = new TTree("GenEvents","GenEvents");
 
@@ -237,16 +224,11 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     iEvent.getByToken(jetCollectionToken_, genJets);
 
     std::vector<reco::GenParticle> leptons;
-    std::vector<reco::GenParticle> leptonsS1;
     std::vector<reco::GenParticle> genleptons;
     std::vector<reco::GenParticle> Zs;
     std::vector<reco::GenJet> jets;
 
-    nleptons=0;
-    njets=0;
-    pT_H = -1.0; mH=1.0;
-
-    p4_lep->Clear(); p4_lepS1->Clear(); p4_jet->Clear(); p4_4l->Clear(); p4_4lS1->Clear(); p4_Z->Clear(); p4_ZZ->Clear();
+    p4_lep.clear(); p4_jet.clear();
     id_lep.clear(); status_lep.clear(); motherid_lep.clear();
     AssociatedParticlePt->clear(); AssociatedParticleEta->clear(); AssociatedParticlePhi->clear(); AssociatedParticleMass->clear(); AssociatedParticleId->clear();
     GenAssociatedParticlePt->clear(); GenAssociatedParticleEta->clear(); GenAssociatedParticlePhi->clear(); GenAssociatedParticleMass->clear(); GenAssociatedParticleId->clear();
@@ -257,13 +239,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     LepPt[2] = LepEta[2] = LepPhi[2] = LepMass[2] = LepId[2] = 0;
     LepPt[3] = LepEta[3] = LepPhi[3] = LepMass[3] = LepId[3] = 0;
 
-    massZ1=-1.0; massZ2=-1.0; mass4l=-1.0;
-    cosTheta1=9999.0; cosTheta2=9999.0; cosThetaStar=9999.0; Phi=9999.0; Phi1=9999.0;
-    finalState=-1;
-    passedFiducial=0;
-
-    MaxDijetM=-1.0;
-    Dijet01M=-1.0;
+    Z1Mass=-1.0; Z2Mass=-1.0; ZZMass=-1.0;
 
     reco::GenParticle higgs;
     vector<const reco::Candidate*> higgsmothers;
@@ -272,8 +248,6 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         if (genPart.pdgId()==25) {
             higgs = genPart;
-            pT_H = genPart.pt();
-            mH = genPart.mass();
             const reco::Candidate *higgsptr = &genPart;
             if (higgsptr->mother(0)->pdgId()!=25) {
               for (unsigned int i = 0; i < genPart.numberOfMothers(); i++) {
@@ -341,9 +315,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             if(genPart.status()==1) {
                 edm::LogInfo("Leptons") << "reco " << passcut << " " << genPart.pdgId() << " " << genPart.pt() << " " << genPart.eta();
                 if (passcut) {
-                    nleptons++;
                     leptons.push_back(genPart);
-                    leptonsS1.push_back(genPart);
                 }
             }
         }
@@ -371,37 +343,25 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
     isSelected = (min(ep, em) + min(mup, mum) + min(taup, taum) >= 2);
 
-    std::sort(Zs.begin(), Zs.end(), sortByM);
-    for (unsigned int i=0; i<Zs.size(); ++i) {
-        new ( (*p4_Z)[i] ) TLorentzVector(Zs[i].px(),Zs[i].py(),Zs[i].pz(),Zs[i].energy());
-    }
-    if (Zs.size()>=2) {
-        TLorentzVector *Z_1 = (TLorentzVector*) p4_Z->At(0);
-        TLorentzVector *Z_2 = (TLorentzVector*) p4_Z->At(1);
-        TLorentzVector p4_Z1Z2 = (*Z_1)+(*Z_2);
-        new ( (*p4_ZZ)[0] ) TLorentzVector(p4_Z1Z2.Px(), p4_Z1Z2.Py(), p4_Z1Z2.Pz(), p4_Z1Z2.E());
-    }
-
     std::sort(leptons.begin(), leptons.end(), sortByPt);
     for (unsigned int i=0; i<leptons.size(); ++i) {
-        new ( (*p4_lep)[i] ) TLorentzVector(leptons[i].px(),leptons[i].py(),leptons[i].pz(),leptons[i].energy());
-        smearlepton((TLorentzVector*)p4_lep->At(i), leptons[i].pdgId());
+        p4_lep.emplace_back(leptons[i].px(),leptons[i].py(),leptons[i].pz(),leptons[i].energy());
+        smearlepton(p4_lep[i], leptons[i].pdgId());
         id_lep.push_back(leptons[i].pdgId());
         status_lep.push_back(leptons[i].status());
         motherid_lep.push_back(leptons[i].mother()->pdgId());
     }
 
-    unsigned int Nlep = p4_lep->GetLast()+1;
+    unsigned int Nlep = p4_lep.size();
     if (isSelected) {
 
-        TLorentzVector *L_1 = (TLorentzVector*) p4_lep->At(0);
-        TLorentzVector *L_2 = (TLorentzVector*) p4_lep->At(1);
-        TLorentzVector *L_3 = (TLorentzVector*) p4_lep->At(2);
-        TLorentzVector *L_4 = (TLorentzVector*) p4_lep->At(3);
+        TLorentzVector L_1 = p4_lep[0];
+        TLorentzVector L_2 = p4_lep[1];
+        TLorentzVector L_3 = p4_lep[2];
+        TLorentzVector L_4 = p4_lep[3];
 
-        TLorentzVector p4_4lep = (*L_1)+(*L_2)+(*L_3)+(*L_4);
-        new ( (*p4_4l)[0] ) TLorentzVector(p4_4lep.Px(), p4_4lep.Py(), p4_4lep.Pz(), p4_4lep.E());
-        mass4l=p4_4lep.M();
+        TLorentzVector p4_4lep = L_1+L_2+L_3+L_4;
+        ZZMass=p4_4lep.M();
 
         double offshell=99999.0;
         int L1=10, L2=10, L3=10, L4=10;
@@ -411,11 +371,10 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
                 if((id_lep[i]+id_lep[j])!=0) continue;
 
-                TLorentzVector *li, *lj;
-                li = (TLorentzVector*) p4_lep->At(i);
-                lj = (TLorentzVector*) p4_lep->At(j);
+                TLorentzVector &li = p4_lep[i];
+                TLorentzVector &lj = p4_lep[j];
 
-                TLorentzVector mll = (*li)+(*lj);
+                TLorentzVector mll = li+lj;
                 if(abs(mll.M()-91.1876)<offshell){
                     double mZ1 = mll.M();
                     L1 = i; L2 = j; offshell = abs(mZ1-91.1876);
@@ -423,14 +382,13 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             }
         }
 
-        TLorentzVector *Z11, *Z12;
-        Z11 = (TLorentzVector*) p4_lep->At(L1);
-        Z12 = (TLorentzVector*) p4_lep->At(L2);
-        TLorentzVector Z1 = (*Z11)+(*Z12);
+        TLorentzVector &Z11 = p4_lep[L1];
+        TLorentzVector &Z12 = p4_lep[L2];
+        TLorentzVector Z1 = Z11+Z12;
 
         bool passZ1=false;
         if(Z1.M()>40 && Z1.M()<120) passZ1 = true;
-        massZ1=Z1.M();
+        Z1Mass=Z1.M();
 
         double pTL34 = 0.0; bool passZ2 = false;
 
@@ -440,15 +398,14 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 if((int)j==L1 || (int)j==L2) continue; // can not be the lep from Z1
                 if((id_lep[i]+id_lep[j])!=0) continue;
 
-                TLorentzVector *li, *lj;
-                li = (TLorentzVector*) p4_lep->At(i);
-                lj = (TLorentzVector*) p4_lep->At(j);
-                TLorentzVector Z2 = (*li)+(*lj);
+                TLorentzVector &li = p4_lep[i];
+                TLorentzVector &lj = p4_lep[j];
+                TLorentzVector Z2 = li+lj;
 
-                if ( ( (*li).Pt()+(*lj).Pt() ) >=pTL34 ) { // choose high sum pT pair satisfy the following selection
+                if ( ( li.Pt()+lj.Pt() ) >=pTL34 ) { // choose high sum pT pair satisfy the following selection
                     double mZ2 = Z2.M();
                     if(mZ2>12.0 && mZ2<120.0){
-                        L3 = i; L4 = j; passZ2 = true; pTL34 = (*li).Pt()+(*lj).Pt();
+                        L3 = i; L4 = j; passZ2 = true; pTL34 = li.Pt()+lj.Pt();
                     } else {
                         // still assign L3 and L4 to this pair if we don't have a passing Z2 yet
                         if (passZ2 == false) {L3 = i; L4 = j;}
@@ -458,25 +415,25 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             }
         }
 
-        LepPt[0] = ((TLorentzVector*)p4_lep->At(L1))->Pt();
-        LepEta[0] = ((TLorentzVector*)p4_lep->At(L1))->Eta();
-        LepPhi[0] = ((TLorentzVector*)p4_lep->At(L1))->Phi();
-        LepMass[0] = ((TLorentzVector*)p4_lep->At(L1))->M();
+        LepPt[0] = p4_lep[L1].Pt();
+        LepEta[0] = p4_lep[L1].Eta();
+        LepPhi[0] = p4_lep[L1].Phi();
+        LepMass[0] = p4_lep[L1].M();
 
-        LepPt[1] = ((TLorentzVector*)p4_lep->At(L2))->Pt();
-        LepEta[1] = ((TLorentzVector*)p4_lep->At(L2))->Eta();
-        LepPhi[1] = ((TLorentzVector*)p4_lep->At(L2))->Phi();
-        LepMass[1] = ((TLorentzVector*)p4_lep->At(L2))->M();
+        LepPt[1] = p4_lep[L2].Pt();
+        LepEta[1] = p4_lep[L2].Eta();
+        LepPhi[1] = p4_lep[L2].Phi();
+        LepMass[1] = p4_lep[L2].M();
 
-        LepPt[2] = ((TLorentzVector*)p4_lep->At(L3))->Pt();
-        LepEta[2] = ((TLorentzVector*)p4_lep->At(L3))->Eta();
-        LepPhi[2] = ((TLorentzVector*)p4_lep->At(L3))->Phi();
-        LepMass[2] = ((TLorentzVector*)p4_lep->At(L3))->M();
+        LepPt[2] = p4_lep[L3].Pt();
+        LepEta[2] = p4_lep[L3].Eta();
+        LepPhi[2] = p4_lep[L3].Phi();
+        LepMass[2] = p4_lep[L3].M();
 
-        LepPt[3] = ((TLorentzVector*)p4_lep->At(L4))->Pt();
-        LepEta[3] = ((TLorentzVector*)p4_lep->At(L4))->Eta();
-        LepPhi[3] = ((TLorentzVector*)p4_lep->At(L4))->Phi();
-        LepMass[3] = ((TLorentzVector*)p4_lep->At(L4))->M();
+        LepPt[3] = p4_lep[L4].Pt();
+        LepEta[3] = p4_lep[L4].Eta();
+        LepPhi[3] = p4_lep[L4].Phi();
+        LepMass[3] = p4_lep[L4].M();
 
         LepId[0] = leptons[L1].pdgId();
         LepId[1] = leptons[L2].pdgId();
@@ -485,21 +442,18 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         if (passZ1 && passZ2) {
 
-            passedFiducial=1;
-
-            TLorentzVector *Z21, *Z22;
-            Z21 = (TLorentzVector*) p4_lep->At(L3);
-            Z22 = (TLorentzVector*) p4_lep->At(L4);
-            TLorentzVector Z2 = (*Z21)+(*Z22);
-            massZ2=Z2.M();
+            TLorentzVector &Z21 = p4_lep[L3];
+            TLorentzVector &Z22 = p4_lep[L4];
+            TLorentzVector Z2 = Z21+Z22;
+            Z2Mass=Z2.M();
 
             // prepare TLorentzVector(s)
             TLorentzVector L11P4,L12P4,L21P4,L22P4;
             // convention for leptons - example for 2mu2e event:    pp -> H -> ZZ -> mu-(p3)+mu+(p4)+e-(p5)+e+(p6)
-            L11P4.SetPxPyPzE(Z11->Px(), Z11->Py(), Z11->Pz(), Z11->E());
-            L12P4.SetPxPyPzE(Z12->Px(), Z12->Py(), Z12->Pz(), Z12->E());
-            L21P4.SetPxPyPzE(Z21->Px(), Z21->Py(), Z21->Pz(), Z21->E());
-            L22P4.SetPxPyPzE(Z22->Px(), Z22->Py(), Z22->Pz(), Z22->E());
+            L11P4.SetPxPyPzE(Z11.Px(), Z11.Py(), Z11.Pz(), Z11.E());
+            L12P4.SetPxPyPzE(Z12.Px(), Z12.Py(), Z12.Pz(), Z12.E());
+            L21P4.SetPxPyPzE(Z21.Px(), Z21.Py(), Z21.Pz(), Z21.E());
+            L22P4.SetPxPyPzE(Z22.Px(), Z22.Py(), Z22.Pz(), Z22.E());
 
             // prepare vectors of TLorentzVector(s)
             std::vector<TLorentzVector> partP;
@@ -510,58 +464,30 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         }
     }
 
-    std::sort(leptonsS1.begin(), leptonsS1.end(), sortByPt);
-    for (unsigned int i=0; i<leptonsS1.size(); ++i) {
-        new ( (*p4_lepS1)[i] ) TLorentzVector(leptonsS1[i].px(),leptonsS1[i].py(),leptonsS1[i].pz(),leptonsS1[i].energy());
-    }
-
-    unsigned int NlepS1 = p4_lepS1->GetLast()+1;
-    if (NlepS1>=4) {
-
-        TLorentzVector *LS1_1 = (TLorentzVector*) p4_lepS1->At(0);
-        TLorentzVector *LS1_2 = (TLorentzVector*) p4_lepS1->At(1);
-        TLorentzVector *LS1_3 = (TLorentzVector*) p4_lepS1->At(2);
-        TLorentzVector *LS1_4 = (TLorentzVector*) p4_lepS1->At(3);
-
-        TLorentzVector p4_4lepS1 = (*LS1_1)+(*LS1_2)+(*LS1_3)+(*LS1_4);
-        new ( (*p4_4lS1)[0] ) TLorentzVector(p4_4lepS1.Px(), p4_4lepS1.Py(), p4_4lepS1.Pz(), p4_4lepS1.E());
-    }
-
     reco::GenJetCollection::const_iterator  genJet;
     for(genJet = genJets->begin(); genJet != genJets->end(); genJet++) {
         double min_dR = 9999.0;
-        for (unsigned int i=0; i<leptonsS1.size(); ++i) {
-            double dR = deltaR(leptonsS1[i].eta(), leptonsS1[i].phi(), genJet->eta(), genJet->phi());
+        for (unsigned int i=0; i<leptons.size(); ++i) {
+            double dR = deltaR(leptons[i].eta(), leptons[i].phi(), genJet->eta(), genJet->phi());
             if (dR<min_dR) min_dR = dR;
         }
         if (min_dR>0.5 && genJet->pt()>30.0) {
-            njets++;
             jets.push_back(*genJet);
         }
     }
     std::sort(jets.begin(), jets.end(), sortJetsByPt);
     for (unsigned int i=0; i<jets.size(); ++i) {
-        new ( (*p4_jet)[i] ) TLorentzVector(jets[i].px(),jets[i].py(),jets[i].pz(),jets[i].energy());
-        smearjet((TLorentzVector*)p4_jet->At(i), jets[i].pdgId());
+        p4_jet.emplace_back(jets[i].px(),jets[i].py(),jets[i].pz(),jets[i].energy());
+        smearjet(p4_jet[i], jets[i].pdgId());
     }
 
     for (unsigned int i=0; i<jets.size(); ++i) {
-        AssociatedParticlePt->push_back(((TLorentzVector*)p4_jet->At(i))->Pt());
-        AssociatedParticleEta->push_back(((TLorentzVector*)p4_jet->At(i))->Eta());
-        AssociatedParticlePhi->push_back(((TLorentzVector*)p4_jet->At(i))->Phi());
-        AssociatedParticleMass->push_back(((TLorentzVector*)p4_jet->At(i))->M());
+        AssociatedParticlePt->push_back(p4_jet[i].Pt());
+        AssociatedParticleEta->push_back(p4_jet[i].Eta());
+        AssociatedParticlePhi->push_back(p4_jet[i].Phi());
+        AssociatedParticleMass->push_back(p4_jet[i].M());
         AssociatedParticleId->push_back(jets[i].pdgId());
-        for (unsigned int j=0; j<jets.size(); ++j) {
-            if (i==j) continue;
-            const TLorentzVector& jet1 = *(TLorentzVector*)p4_jet->At(i);
-            const TLorentzVector& jet2 = *(TLorentzVector*)p4_jet->At(j);
-            TLorentzVector dijet = jet1+jet2;
-            if (dijet.M()>MaxDijetM) MaxDijetM=dijet.M();
-            if (i==0 and j==1) Dijet01M=dijet.M();
-        }
     }
-
-    h_nleptons->Fill( nleptons );
 
     GenEventsTree->Fill();
 
@@ -587,34 +513,12 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
 
     tree->Branch("isSelected", &isSelected, "isSelected/I");
 
-    tree->Branch("nleptons",&nleptons,"nleptons/I");
-    tree->Branch("njets",&njets,"njets/I");
-    tree->Branch("pT_H",&pT_H,"pT_H/D");
-    tree->Branch("mH",&mH,"mH/D");
+    tree->Branch("p4_lep", &p4_lep);
+    tree->Branch("id_lep", &id_lep);
+    tree->Branch("status_lep", &status_lep);
+    tree->Branch("motherid_lep", &motherid_lep);
 
-    p4_lep = new TClonesArray("TLorentzVector", 10);
-    tree->Branch("p4_lep","TClonesArray", &p4_lep,128000, 0);
-    tree->Branch("id_lep",&id_lep);
-    tree->Branch("status_lep",&status_lep);
-    tree->Branch("motherid_lep",&motherid_lep);
-
-    p4_4l = new TClonesArray("TLorentzVector", 10);
-    tree->Branch("p4_4l","TClonesArray", &p4_4l,128000, 0);
-
-    p4_lepS1 = new TClonesArray("TLorentzVector", 10);
-    tree->Branch("p4_lepS1","TClonesArray", &p4_lepS1,128000, 0);
-
-    p4_4lS1 = new TClonesArray("TLorentzVector", 10);
-    tree->Branch("p4_4lS1","TClonesArray", &p4_4lS1,128000, 0);
-
-    p4_Z = new TClonesArray("TLorentzVector", 10);
-    tree->Branch("p4_Z","TClonesArray", &p4_Z,128000, 0);
-
-    p4_ZZ = new TClonesArray("TLorentzVector", 10);
-    tree->Branch("p4_ZZ","TClonesArray", &p4_ZZ,128000, 0);
-
-    p4_jet = new TClonesArray("TLorentzVector", 10);
-    tree->Branch("p4_jet","TClonesArray", &p4_jet,128000, 0);
+    tree->Branch("p4_jet", &p4_jet);
 
     tree->Branch("AssociatedParticlePt", &AssociatedParticlePt);
     tree->Branch("AssociatedParticleEta", &AssociatedParticleEta);
@@ -631,19 +535,9 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
     tree->Branch("GenMotherPz", &GenMotherPz);
     tree->Branch("GenMotherId", &GenMotherId);
 
-    tree->Branch("cosTheta1",&cosTheta1,"cosTheta1/F");
-    tree->Branch("cosTheta2",&cosTheta2,"cosTheta2/F");
-    tree->Branch("cosThetaStar",&cosThetaStar,"cosThetaStar/F");
-    tree->Branch("Phi",&Phi,"Phi/F");
-    tree->Branch("Phi1",&Phi1,"Phi1/F");
-    tree->Branch("massZ1",&massZ1,"massZ1/D");
-    tree->Branch("massZ2",&massZ2,"massZ2/D");
-    tree->Branch("mass4l",&mass4l,"mass4l/D");
-    tree->Branch("finalState",&finalState,"finalState/I");
-    tree->Branch("passedFiducial",&passedFiducial,"passedFiducial/I");
-
-    tree->Branch("MaxDijetM",&MaxDijetM,"MaxDijetM/D");
-    tree->Branch("Dijet01M",&Dijet01M,"Dijet01M/D");
+    tree->Branch("Z1Mass",&Z1Mass,"Z1Mass/D");
+    tree->Branch("Z2Mass",&Z2Mass,"Z2Mass/D");
+    tree->Branch("ZZMass",&ZZMass,"ZZMass/D");
 
     tree->Branch("Lep1Pt", &LepPt[0], "Lep1Pt/F");
     tree->Branch("Lep1Eta", &LepEta[0], "Lep1Eta/F");
@@ -743,7 +637,7 @@ PlotHiggsMass::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   descriptions.addDefault(desc);
 }
 
-void PlotHiggsMass::smearlepton(TLorentzVector* lepton, int id) {
+void PlotHiggsMass::smearlepton(TLorentzVector& lepton, int id) {
   double sigmapt, sigmaeta, sigmaphi;
   if (abs(id) == 11) {
     sigmapt = smearelectronpt;
@@ -757,20 +651,20 @@ void PlotHiggsMass::smearlepton(TLorentzVector* lepton, int id) {
     sigmapt = sigmaeta = sigmaphi = 0;
     throw cms::Exception("LeptonId") << "Unkown lepton id " << id;
   }
-  lepton->SetPtEtaPhiM(
-                       random.Gaus(lepton->Pt(), sigmapt),
-                       random.Gaus(lepton->Eta(), sigmaeta),
-                       random.Gaus(lepton->Phi(), sigmaphi),
-                       lepton->M()
-                      );
+  lepton.SetPtEtaPhiM(
+                      random.Gaus(lepton.Pt(), sigmapt),
+                      random.Gaus(lepton.Eta(), sigmaeta),
+                      random.Gaus(lepton.Phi(), sigmaphi),
+                      lepton.M()
+                     );
 }
-void PlotHiggsMass::smearjet(TLorentzVector* jet, int id) {
-  jet->SetPtEtaPhiM(
-                    random.Gaus(jet->Pt(), smearjetpt),
-                    random.Gaus(jet->Eta(), smearjeteta),
-                    random.Gaus(jet->Phi(), smearjetphi),
-                    jet->M()
-                   );
+void PlotHiggsMass::smearjet(TLorentzVector& jet, int id) {
+  jet.SetPtEtaPhiM(
+                   random.Gaus(jet.Pt(), smearjetpt),
+                   random.Gaus(jet.Eta(), smearjeteta),
+                   random.Gaus(jet.Phi(), smearjetphi),
+                   jet.M()
+                  );
 }
 
 //define this as a plug-in
