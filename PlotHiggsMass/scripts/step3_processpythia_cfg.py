@@ -10,11 +10,11 @@ try:
     if not outfile.endswith(".root") or os.path.exists(outfile):
         raise ValueError("First argument {} should end with .root and not exist".format(sys.argv[2]))
 
-    VBForVH = sys.argv[3].upper()
+    VBForVH = sys.argv[3]
     if VBForVH in ("ZH", "WH"):
         VBForVH = "VH"
-    if VBForVH not in ("VBF", "VH"):
-        raise ValueError("Second argument should be VBF or VH")
+    if VBForVH not in ("VBF", "VH", "ggH", "qqZZ"):
+        raise ValueError("Second argument should be VBF, VH, ggH, or qqZZ")
 
     infiles = sys.argv[4:]
     if not infiles:
@@ -45,7 +45,17 @@ process.TFileService = cms.Service("TFileService",
 )
 
 process.demo = cms.EDAnalyzer('PlotHiggsMass',
-    VBForVH = cms.string(VBForVH)
+    VBForVH = cms.string(VBForVH),
+    smearelectronpt = cms.double(2.399),
+    smearelectroneta = cms.double(0.04383),
+    smearelectronphi = cms.double(0.04702),
+    smearmuonpt = cms.double(2.169),
+    smearmuoneta = cms.double(0.04461),
+    smearmuonphi = cms.double(0.04762),
+    smearjetpt = cms.double(18),
+    smearjeteta = cms.double(0.28),
+    smearjetphi = cms.double(0.17),
+    randomseed = cms.int32(hash(tuple(infiles))),  #random, but deterministic for given infiles
 )
 
 

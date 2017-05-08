@@ -45,6 +45,7 @@ using namespace std;
 #include "TTree.h"
 #include "TLorentzVector.h"
 #include "TClonesArray.h"
+#include "TRandom3.h"
 
 #include "computeAngles.h"
 
@@ -62,6 +63,9 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       static bool sortByM( const reco::GenParticle &p1, const reco::GenParticle &p2 ){ return (p1.mass() > p2.mass()); };
       static bool sortJetsByPt( const reco::GenJet &p1, const reco::GenJet &p2 ){ return (p1.pt() > p2.pt()); };
       static bool sortPointerByPz( const reco::Candidate *&p1, const reco::Candidate *&p2 ){ return (p1->pz() > p2->pz()); };
+
+      void smearlepton(TLorentzVector* lepton, int id);
+      void smearjet(TLorentzVector* jet, int id);
 
    private:
 
@@ -123,18 +127,46 @@ class PlotHiggsMass : public edm::EDAnalyzer {
 
       int isSelected;
 
-      enum EnumVBForVH {VBF, VH} VBForVH;
+      enum EnumVBForVH {VBF, VH, ggH, qqZZ} VBForVH;
+
+      double smearelectronpt;
+      double smearelectroneta;
+      double smearelectronphi;
+
+      double smearmuonpt;
+      double smearmuoneta;
+      double smearmuonphi;
+
+      double smearjetpt;
+      double smearjeteta;
+      double smearjetphi;
+
+      TRandom3 random;
 };
 
 PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) :
-  iC(consumesCollector())
+  iC(consumesCollector()),
+  smearelectronpt(iConfig.getParameter<double>("smearelectronpt")),
+  smearelectroneta(iConfig.getParameter<double>("smearelectroneta")),
+  smearelectronphi(iConfig.getParameter<double>("smearelectronphi")),
+  smearmuonpt(iConfig.getParameter<double>("smearmuonpt")),
+  smearmuoneta(iConfig.getParameter<double>("smearmuoneta")),
+  smearmuonphi(iConfig.getParameter<double>("smearmuonphi")),
+  smearjetpt(iConfig.getParameter<double>("smearjetpt")),
+  smearjeteta(iConfig.getParameter<double>("smearjeteta")),
+  smearjetphi(iConfig.getParameter<double>("smearjetphi")),
+  random(iConfig.getParameter<int>("randomseed"))
 {
     if (iConfig.getParameter<std::string>("VBForVH") == "VBF")
       VBForVH = VBF;
     else if (iConfig.getParameter<std::string>("VBForVH") == "VH")
-      VBForVH = VBF;
+      VBForVH = VH;
+    else if (iConfig.getParameter<std::string>("VBForVH") == "ggH")
+      VBForVH = ggH;
+    else if (iConfig.getParameter<std::string>("VBForVH") == "qqZZ")
+      VBForVH = qqZZ;
     else
-      throw cms::Exception("BadInput") << "VBForVH should be VBF or VH";
+      throw cms::Exception("BadInput") << "VBForVH should be VBF, VH, ggH, or qqZZ";
 
     edm::Service<TFileService> fs;
     h_nleptons    = fs->make<TH1F>( "h_nleptons", "", 1,  0., 1. );
@@ -261,11 +293,15 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             Zs.push_back(genPart);
         }
 
-        if (abs(genPart.pdgId()) < 6 || (abs(genPart.pdgId()) >= 11 && abs(genPart.pdgId()) <= 16)) {
-            if( genPart.mother()->numberOfMothers() >= 1 && genPart.mother()->mother()->pdgId()==25 ) {
+        if (abs(genPart.pdgId()) < 6 || (abs(genPart.pdgId()) >= 11 && abs(genPart.pdgId()) <= 16) || abs(genPart.pdgId()) == 21) {
+            if(genPart.mother()->numberOfMothers() >= 1 && (
+                 genPart.mother()->mother()->pdgId()==25
+                 || (VBForVH == qqZZ && genPart.mother()->pdgId()==23)
+              )) {
                 edm::LogInfo("Leptons") << "gen  " << genPart.pdgId() << " " << genPart.pt() << " " << genPart.eta();
                 genleptons.push_back(genPart);
-            } else if (genPart.numberOfMothers() == higgsmothers.size() && VBForVH == VBF){
+            } else if (genPart.numberOfMothers() == higgsmothers.size() &&
+                       (VBForVH == VBF || VBForVH == ggH || VBForVH == qqZZ)){
                 vector<const reco::Candidate*> mothers;
                 for (unsigned int i = 0; i < genPart.numberOfMothers(); i++) {
                   edm::LogInfo("JetMother") << i << " " << genPart.mother(i)->pt() << " " << genPart.mother(i)->pdgId();
@@ -285,7 +321,8 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     GenAssociatedParticleMass->push_back(genPart.mass());
                     GenAssociatedParticleId->push_back(genPart.pdgId());
                 }
-            } else if (genPart.numberOfMothers() == 1 && (genPart.mother(0)->pdgId()==23 || abs(genPart.mother(0)->pdgId())==24)) {
+            } else if (genPart.numberOfMothers() == 1 && (genPart.mother(0)->pdgId()==23 || abs(genPart.mother(0)->pdgId())==24)
+                         && VBForVH == VH) {
                 GenAssociatedParticlePt->push_back(genPart.pt());
                 GenAssociatedParticleEta->push_back(genPart.eta());
                 GenAssociatedParticlePhi->push_back(genPart.phi());
@@ -348,6 +385,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     std::sort(leptons.begin(), leptons.end(), sortByPt);
     for (unsigned int i=0; i<leptons.size(); ++i) {
         new ( (*p4_lep)[i] ) TLorentzVector(leptons[i].px(),leptons[i].py(),leptons[i].pz(),leptons[i].energy());
+        smearlepton((TLorentzVector*)p4_lep->At(i), leptons[i].pdgId());
         id_lep.push_back(leptons[i].pdgId());
         status_lep.push_back(leptons[i].status());
         motherid_lep.push_back(leptons[i].mother()->pdgId());
@@ -504,18 +542,19 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     std::sort(jets.begin(), jets.end(), sortJetsByPt);
     for (unsigned int i=0; i<jets.size(); ++i) {
         new ( (*p4_jet)[i] ) TLorentzVector(jets[i].px(),jets[i].py(),jets[i].pz(),jets[i].energy());
+        smearjet((TLorentzVector*)p4_jet->At(i), jets[i].pdgId());
     }
 
     for (unsigned int i=0; i<jets.size(); ++i) {
-        AssociatedParticlePt->push_back(jets[i].pt());
-        AssociatedParticleEta->push_back(jets[i].eta());
-        AssociatedParticlePhi->push_back(jets[i].phi());
-        AssociatedParticleMass->push_back(jets[i].mass());
+        AssociatedParticlePt->push_back(((TLorentzVector*)p4_jet->At(i))->Pt());
+        AssociatedParticleEta->push_back(((TLorentzVector*)p4_jet->At(i))->Eta());
+        AssociatedParticlePhi->push_back(((TLorentzVector*)p4_jet->At(i))->Phi());
+        AssociatedParticleMass->push_back(((TLorentzVector*)p4_jet->At(i))->M());
         AssociatedParticleId->push_back(jets[i].pdgId());
         for (unsigned int j=0; j<jets.size(); ++j) {
             if (i==j) continue;
-            const TLorentzVector jet1(jets[i].px(), jets[i].py(), jets[i].pz(), jets[i].energy());
-            const TLorentzVector jet2(jets[j].px(), jets[j].py(), jets[j].pz(), jets[j].energy());
+            const TLorentzVector& jet1 = *(TLorentzVector*)p4_jet->At(i);
+            const TLorentzVector& jet2 = *(TLorentzVector*)p4_jet->At(j);
             TLorentzVector dijet = jet1+jet2;
             if (dijet.M()>MaxDijetM) MaxDijetM=dijet.M();
             if (i==0 and j==1) Dijet01M=dijet.M();
@@ -702,6 +741,36 @@ PlotHiggsMass::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   edm::ParameterSetDescription desc;
   desc.setUnknown();
   descriptions.addDefault(desc);
+}
+
+void PlotHiggsMass::smearlepton(TLorentzVector* lepton, int id) {
+  double sigmapt, sigmaeta, sigmaphi;
+  if (abs(id) == 11) {
+    sigmapt = smearelectronpt;
+    sigmaeta = smearelectroneta;
+    sigmaphi = smearelectronphi;
+  } else if (abs(id) == 13) {
+    sigmapt = smearmuonpt;
+    sigmaeta = smearmuoneta;
+    sigmaphi = smearmuonphi;
+  } else {
+    sigmapt = sigmaeta = sigmaphi = 0;
+    throw cms::Exception("LeptonId") << "Unkown lepton id " << id;
+  }
+  lepton->SetPtEtaPhiM(
+                       random.Gaus(lepton->Pt(), sigmapt),
+                       random.Gaus(lepton->Eta(), sigmaeta),
+                       random.Gaus(lepton->Phi(), sigmaphi),
+                       lepton->M()
+                      );
+}
+void PlotHiggsMass::smearjet(TLorentzVector* jet, int id) {
+  jet->SetPtEtaPhiM(
+                    random.Gaus(jet->Pt(), smearjetpt),
+                    random.Gaus(jet->Eta(), smearjeteta),
+                    random.Gaus(jet->Phi(), smearjetphi),
+                    jet->M()
+                   );
 }
 
 //define this as a plug-in
