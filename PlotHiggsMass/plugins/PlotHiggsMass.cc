@@ -84,7 +84,7 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       ULong64_t Run, Event, LumiSect;
 
       std::vector<TLorentzVector> p4_lep, p4_jet;
-      std::vector<int> id_lep; std::vector<int> status_lep; std::vector<int> motherid_lep;
+      std::vector<int> id_lep;
 
       std::vector<double> *AssociatedParticlePt;
       std::vector<double> *AssociatedParticleEta;
@@ -143,8 +143,9 @@ PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) :
   smearjetpt(iConfig.getParameter<double>("smearjetpt")),
   smearjeteta(iConfig.getParameter<double>("smearjeteta")),
   smearjetphi(iConfig.getParameter<double>("smearjetphi")),
-  random(iConfig.getParameter<int>("randomseed"))
+  random(iConfig.getParameter<unsigned int>("randomseed"))
 {
+    gErrorIgnoreLevel = kError;
     if (iConfig.getParameter<std::string>("VBForVH") == "VBF")
       VBForVH = VBF;
     else if (iConfig.getParameter<std::string>("VBForVH") == "VH")
@@ -229,7 +230,7 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     std::vector<reco::GenJet> jets;
 
     p4_lep.clear(); p4_jet.clear();
-    id_lep.clear(); status_lep.clear(); motherid_lep.clear();
+    id_lep.clear();
     AssociatedParticlePt->clear(); AssociatedParticleEta->clear(); AssociatedParticlePhi->clear(); AssociatedParticleMass->clear(); AssociatedParticleId->clear();
     GenAssociatedParticlePt->clear(); GenAssociatedParticleEta->clear(); GenAssociatedParticlePhi->clear(); GenAssociatedParticleMass->clear(); GenAssociatedParticleId->clear();
     GenMotherPz->clear(); GenMotherId->clear();
@@ -348,8 +349,6 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         p4_lep.emplace_back(leptons[i].px(),leptons[i].py(),leptons[i].pz(),leptons[i].energy());
         smearlepton(p4_lep[i], leptons[i].pdgId());
         id_lep.push_back(leptons[i].pdgId());
-        status_lep.push_back(leptons[i].status());
-        motherid_lep.push_back(leptons[i].mother()->pdgId());
     }
 
     unsigned int Nlep = p4_lep.size();
@@ -512,13 +511,6 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
     tree->Branch("LumiSect",&LumiSect,"LumiSect/l");
 
     tree->Branch("isSelected", &isSelected, "isSelected/I");
-
-    tree->Branch("p4_lep", &p4_lep);
-    tree->Branch("id_lep", &id_lep);
-    tree->Branch("status_lep", &status_lep);
-    tree->Branch("motherid_lep", &motherid_lep);
-
-    tree->Branch("p4_jet", &p4_jet);
 
     tree->Branch("AssociatedParticlePt", &AssociatedParticlePt);
     tree->Branch("AssociatedParticleEta", &AssociatedParticleEta);

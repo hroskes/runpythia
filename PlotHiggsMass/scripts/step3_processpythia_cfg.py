@@ -55,7 +55,7 @@ process.demo = cms.EDAnalyzer('PlotHiggsMass',
     smearjetpt = cms.double(18),
     smearjeteta = cms.double(0.28),
     smearjetphi = cms.double(0.17),
-    randomseed = cms.int32(hash(tuple(infiles))),  #random, but deterministic for given infiles
+    randomseed = cms.uint32(hash(tuple(infiles)) % 0xFFFFFFFF),  #random, but deterministic for given infiles
 )
 
 
