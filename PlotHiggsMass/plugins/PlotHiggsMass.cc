@@ -159,7 +159,7 @@ PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) :
 
     edm::Service<TFileService> fs;
 
-    GenEventsTree = new TTree("GenEvents","GenEvents");
+    GenEventsTree = fs->make<TTree>("GenEvents","GenEvents");
 
     //now do what ever initialization is needed
 
