@@ -24,7 +24,7 @@ try:
             raise ValueError("Third argument and further {} should end with .root and exist".format(filename))
 except:
     print sys.argv
-    print "cmsRun", sys.argv[1], "outputfile.root VBForVH inputfile1.root inputfile2.root ..."
+    print "cmsRun", sys.argv[1], "outputfile.root VBForVHorggHorqqZZ inputfile1.root inputfile2.root ..."
     raise
 
 process = cms.Process("Demo")
@@ -46,15 +46,15 @@ process.TFileService = cms.Service("TFileService",
 
 process.demo = cms.EDAnalyzer('PlotHiggsMass',
     VBForVH = cms.string(VBForVH),
-    smearelectronpt = cms.double(2.399),
-    smearelectroneta = cms.double(0.04383),
-    smearelectronphi = cms.double(0.04702),
-    smearmuonpt = cms.double(2.169),
-    smearmuoneta = cms.double(0.04461),
-    smearmuonphi = cms.double(0.04762),
-    smearjetpt = cms.double(18),
-    smearjeteta = cms.double(0.28),
-    smearjetphi = cms.double(0.17),
+    smearelectronpt = cms.double(2.399/6),
+    smearelectroneta = cms.double(0),
+    smearelectronphi = cms.double(0),
+    smearmuonpt = cms.double(2.169/6),
+    smearmuoneta = cms.double(0),
+    smearmuonphi = cms.double(0),
+    smearjetpt = cms.double(18./6),
+    smearjeteta = cms.double(0),
+    smearjetphi = cms.double(0),
     randomseed = cms.uint32(hash(tuple(infiles)) % 0xFFFFFFFF),  #random, but deterministic for given infiles
 )
 
