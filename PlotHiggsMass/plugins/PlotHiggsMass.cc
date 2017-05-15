@@ -130,6 +130,8 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       double smearjetphi;
 
       TRandom3 random;
+
+      bool keepallevents;
 };
 
 PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) :
@@ -143,7 +145,8 @@ PlotHiggsMass::PlotHiggsMass(const edm::ParameterSet& iConfig) :
   smearjetpt(iConfig.getParameter<double>("smearjetpt")),
   smearjeteta(iConfig.getParameter<double>("smearjeteta")),
   smearjetphi(iConfig.getParameter<double>("smearjetphi")),
-  random(iConfig.getParameter<unsigned int>("randomseed"))
+  random(iConfig.getParameter<unsigned int>("randomseed")),
+  keepallevents(iConfig.getParameter<bool>("keepallevents"))
 {
     gErrorIgnoreLevel = kError;
     if (iConfig.getParameter<std::string>("VBForVH") == "VBF")
@@ -488,7 +491,8 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         AssociatedParticleId->push_back(jets[i].pdgId());
     }
 
-    GenEventsTree->Fill();
+    if (isSelected || keepallevents)
+      GenEventsTree->Fill();
 
 }
 
