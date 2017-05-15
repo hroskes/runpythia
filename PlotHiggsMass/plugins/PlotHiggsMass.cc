@@ -362,9 +362,6 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         TLorentzVector L_3 = p4_lep[2];
         TLorentzVector L_4 = p4_lep[3];
 
-        TLorentzVector p4_4lep = L_1+L_2+L_3+L_4;
-        ZZMass=p4_4lep.M();
-
         double offshell=99999.0;
         int L1=10, L2=10, L3=10, L4=10;
 
@@ -416,6 +413,9 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
             }
         }
+
+        TLorentzVector p4_4lep = p4_lep[L1]+p4_lep[L2]+p4_lep[L3]+p4_lep[L4];
+        ZZMass=p4_4lep.M();
 
         LepPt[0] = p4_lep[L1].Pt();
         LepEta[0] = p4_lep[L1].Eta();
