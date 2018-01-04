@@ -107,6 +107,7 @@ class PlotHiggsMass : public edm::EDAnalyzer {
       int LepId[4];
       float GenLepPt[4], GenLepEta[4], GenLepPhi[4], GenLepMass[4];
       int GenLepId[4];
+      float GenHPt, GenHEta, GenHPhi, GenHMass;
 
       const constexpr static double electronetacut = 2.5;
       const constexpr static double electronpTcut = 7.;
@@ -261,6 +262,10 @@ PlotHiggsMass::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 GenMotherPz->push_back(higgsptr->mother(i)->pz());
               }
               std::sort(higgsmothers.begin(), higgsmothers.end(), sortPointerByPz);
+              GenHPt = higgs.pt();
+              GenHEta = higgs.eta();
+              GenHPhi = higgs.phi();
+              GenHMass = higgs.mass();
               break;
             }
         }
@@ -582,6 +587,11 @@ void PlotHiggsMass::bookPassedEventTree(TString treeName, TTree *tree)
     tree->Branch("GenLep4Phi", &GenLepPhi[3], "GenLep4Phi/F");
     tree->Branch("GenLep4Mass", &GenLepMass[3], "GenLep4Mass/F");
     tree->Branch("GenLep4Id", &GenLepId[3], "GenLep4Id/I");
+
+    tree->Branch("GenHPt", &GenHPt, "GenHPt/F");
+    tree->Branch("GenHEta", &GenHEta, "GenHEta/F");
+    tree->Branch("GenHPhi", &GenHPhi, "GenHPhi/F");
+    tree->Branch("GenHMass", &GenHMass, "GenHMass/F");
 
 }
 
