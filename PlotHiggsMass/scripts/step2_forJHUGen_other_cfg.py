@@ -10,7 +10,6 @@ from runpythia.PlotHiggsMass.pythiaargs import infile, firstevent, lastevent, ou
 import FWCore.ParameterSet.Config as cms
 from Configuration.Generator.Pythia8CommonSettings_cfi import *
 from Configuration.Generator.MCTunes2017.PythiaCP5Settings_cfi import *
-from Configuration.Generator.Pythia8PowhegEmissionVetoSettings_cfi import *
 
 process = cms.Process('GEN')
 
@@ -87,14 +86,12 @@ generator = cms.EDFilter("Pythia8HadronizerFilter",
                          PythiaParameters = cms.PSet(
         pythia8CommonSettingsBlock,
         pythia8CP5SettingsBlock,
-        pythia8PowhegEmissionVetoSettingsBlock,
         processParameters = cms.vstring(
             'SpaceShower:pTmaxMatch = 1',
             'TimeShower:pTmaxMatch = 1',
         ),
         parameterSets = cms.vstring('pythia8CommonSettings',
                                     'pythia8CP5Settings',
-                                    'pythia8PowhegEmissionVetoSettings',
                                     'processParameters'
                                     )
         )
